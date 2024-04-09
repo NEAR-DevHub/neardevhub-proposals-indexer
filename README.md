@@ -22,9 +22,13 @@ Simply fork an existing indexer and press the publish button in the [QueryApi.Ap
 
 
 Tips:
-1. Once a indexer is deployed the schema can't be edited only forked. Make sure to deleted unused once.
-2. Make sure to fork the indexer before editing it. It automatically changes the name for you.
 
+1. Once a indexer is deployed the schema can't be edited only forked. Make sure to deleted unused once.
+You don’t have to fork the indexer every time you fix the JS code – this is needed only if you need to use another SQL schema or want to completely wipe the indexer. 
+
+2. Make sure to fork the indexer before editing the schema. It automatically makes some useful changes for you.
+
+3. The original way of writing data to the indexer was using GraphQL mutation. This generally works, but provides less flexibility and has poor performance. It is recommended to migrate to [context.db](https://docs.near.org/bos/queryapi/context-object#db-methods) methods. Try to use `upsert` extensively to allow your indexer to reindex same blocks.
 
 Read more about the indexer in the [docs](https://docs.near.org/concepts/advanced/indexers)
 
