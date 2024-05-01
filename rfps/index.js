@@ -13,22 +13,55 @@ import { Block } from "@near-lake/primitives";
  * @param {block} Block - A Near Protocol Block
  */
 
-const contract_account = "infrastructure-committee.near";
-
 async function getBlock(block: Block) {
+  // await context.db.Dumps.delete({ receipt_id: "FiKmh8utcScQVADhMwUZ1v6TfCtJZ6No8PcvqpFkNGPU"})
+  // await context.db.Rfps.delete({ id: 1})
   const devhubOps = getDevHubOps(block);
 
   if (devhubOps.length > 0) {
     console.log({ devhubOps });
+    const authorToProposalId = buildAuthorToRFPIdMap(block);
     const blockHeight = block.blockHeight;
     const blockTimestamp = block.header().timestampNanosec;
     await Promise.all(
       devhubOps.map((op) =>
-        indexOp(op, blockHeight, blockTimestamp, context)
+        indexOp(op, authorToProposalId, blockHeight, blockTimestamp, context)
       )
     );
   }
 }
+
+
+// Borsh
+function buildAuthorToRFPIdMap(block) {
+  const stateChanges = block.streamerMessage.shards
+    .flatMap((e) => e.stateChanges)
+    .filter(
+      (stateChange) =>
+        stateChange.change.accountId === "truedove38.near" &&
+        stateChange.type === "data_update"
+    );
+
+  const addOrEditProposal = stateChanges
+    .map((stateChange) => stateChange.change)
+    .filter((change) => base64toHex(change.keyBase64).startsWith("11"))
+    .map((c) => ({
+      k: Buffer.from(c.keyBase64, "base64"),
+      v: Buffer.from(c.valueBase64, "base64"),
+    }));
+
+  const proposalIds = Object.fromEntries(
+    addOrEditProposal.map((kv) => {
+      return[
+        "hey",
+        Number(kv.k.slice(1).readBigUInt64LE())
+      ]
+    })
+  );
+
+  return proposalIds;
+}
+
 
 function base64decode(encodedValue) {
   let buff = Buffer.from(encodedValue, "base64");
@@ -43,7 +76,7 @@ function base64toHex(encodedValue) {
 function getDevHubOps(block) {
   return block
     .actions()
-    .filter((action) => action.receiverId === contract_account)
+    .filter((action) => action.receiverId === "truedove38.near")
     .flatMap((action) =>
       action.operations
         .filter((operation) => operation["FunctionCall"])
@@ -60,8 +93,8 @@ function getDevHubOps(block) {
             operation.methodName === "edit_rfp" ||
             operation.methodName === "edit_rfp_internal" ||
             operation.methodName === "edit_rfp_timeline" ||
-            (operation.methodName === "set_block_height_callback" &&
-              operation.caller === contract_account) // callback from add_rfp from devhub contract
+            (operation.methodName === "set_rfp_block_height_callback" &&
+              operation.caller === "truedove38.near") // callback from add_rfp from devhub contract
         )
         .map((functionCallOperation) => ({
           ...functionCallOperation,
@@ -73,14 +106,15 @@ function getDevHubOps(block) {
 
 async function indexOp(
   op,
+  authorToProposalId,
   blockHeight,
   blockTimestamp,
   context
 ) {
   let receipt_id = op.receiptId;
-
+  let author = Object.keys(authorToProposalId)[0];
   let args = op.args;
-  let rfp_id = 0 ?? null; // TODO
+  let rfp_id = authorToProposalId[author] ?? null;
   let method_name = op.methodName;
 
   let err = await createDump(context, {
@@ -103,7 +137,7 @@ async function indexOp(
     return;
   }
 
-  if (method_name === "set_block_height_callback") {
+  if (method_name === "set_rfp_block_height_callback") {
     let rfp = {
       id: rfp_id,
     };
@@ -145,7 +179,7 @@ async function indexOp(
       submission_deadline,
       views:
         result
-          .thomasguntenaar_near_devhub_rfps_sierra_rfp_snapshots[0]
+          .polyprogrammist_near_rfp_fix_editor_rfp_snapshots[0]
           .views + 1,
     };
     await createrfpSnapshot(context, rfp_snapshot);
@@ -157,7 +191,7 @@ async function indexOp(
     if (Object.keys(result).length !== 0) {
       let latest_rfp_snapshot =
         result
-          .thomasguntenaar_near_devhub_rfps_sierra_rfp_snapshots[0];
+          .polyprogrammist_near_rfp_fix_editor_rfp_snapshots[0];
       console.log({
         method: "edit_rfp_timeline",
         latest_rfp_snapshot,
@@ -209,8 +243,8 @@ async function createDump(
     };
     await context.graphql(
       `
-        mutation CreateDump($dump: thomasguntenaar_near_devhub_rfps_sierra_dumps_insert_input!) {
-          insert_thomasguntenaar_near_devhub_rfps_sierra_dumps_one(
+        mutation CreateDump($dump: polyprogrammist_near_rfp_fix_editor_dumps_insert_input!) {
+          insert_polyprogrammist_near_rfp_fix_editor_dumps_one(
             object: $dump
           ) {
             receipt_id
@@ -240,8 +274,8 @@ async function createrfp(context, { id }) {
     };
     await context.graphql(
       `
-      mutation Createrfp($rfp: thomasguntenaar_near_devhub_rfps_sierra_rfps_insert_input!) {
-        insert_thomasguntenaar_near_devhub_rfps_sierra_rfps_one(object: $rfp) {id}
+      mutation Createrfp($rfp: polyprogrammist_near_rfp_fix_editor_rfps_insert_input!) {
+        insert_polyprogrammist_near_rfp_fix_editor_rfps_one(object: $rfp) {id}
       }
       `,
       mutationData
@@ -274,7 +308,6 @@ async function createrfpSnapshot(
     rfp_id,
     block_height,
     ts,
-    editor_id,
     labels,
     name,
     category,
@@ -291,8 +324,8 @@ async function createrfpSnapshot(
     };
     await context.graphql(
       `
-      mutation CreaterfpSnapshot($rfp_snapshot: thomasguntenaar_near_devhub_rfps_sierra_rfp_snapshots_insert_input!) {
-        insert_thomasguntenaar_near_devhub_rfps_sierra_rfp_snapshots_one(object: $rfp_snapshot) {rfp_id, block_height}
+      mutation CreaterfpSnapshot($rfp_snapshot: polyprogrammist_near_rfp_fix_editor_rfp_snapshots_insert_input!) {
+        insert_polyprogrammist_near_rfp_fix_editor_rfp_snapshots_one(object: $rfp_snapshot) {rfp_id, block_height}
       }
       `,
       mutationData
@@ -317,11 +350,10 @@ const queryLatestSnapshot = async (rfp_id) => {
     const result = await context.graphql(
       `
       query GetLatestSnapshot($rfp_id: Int!) {
-        thomasguntenaar_near_devhub_rfps_sierra_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_rfp_fix_editor_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
           rfp_id
           block_height
           ts
-          editor_id
           labels
           name
           category
@@ -351,7 +383,7 @@ const queryLatestViews = async (rfp_id) => {
     const result = await context.graphql(
       `
       query GetLatestSnapshot($rfp_id: Int!) {
-        thomasguntenaar_near_devhub_rfps_sierra_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_rfp_fix_editor_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
           rfp_id
           views
         }

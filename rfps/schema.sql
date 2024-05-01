@@ -38,9 +38,6 @@ CREATE INDEX
   idx_rfp_snapshots_ts ON rfp_snapshots (ts);
 
 CREATE INDEX
-  idx_rfp_snapshots_editor_id ON rfp_snapshots (editor_id);
-
-CREATE INDEX
   idx_rfp_snapshots_labels ON rfp_snapshots USING GIN (labels);
 
 CREATE INDEX
@@ -71,8 +68,8 @@ SELECT
   ps.description,
   ps.timeline,
   ps.views,
-  ps.submission_deadline,
-FROM
+  ps.submission_deadline
+FROM 
   rfps p
   INNER JOIN (
     SELECT
