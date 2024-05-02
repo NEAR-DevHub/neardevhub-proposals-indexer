@@ -184,7 +184,7 @@ async function indexOp(
       submission_deadline,
       views:
         result
-          .polyprogrammist_near_rfp_fix_editor_rfp_snapshots[0]
+          .polyprogrammist_near_devhub_rfps_rfp_snapshots[0]
           .views + 1,
     };
     await createrfpSnapshot(context, rfp_snapshot);
@@ -196,7 +196,7 @@ async function indexOp(
     if (Object.keys(result).length !== 0) {
       let latest_rfp_snapshot =
         result
-          .polyprogrammist_near_rfp_fix_editor_rfp_snapshots[0];
+          .polyprogrammist_near_devhub_rfps_rfp_snapshots[0];
       console.log({
         method: "edit_rfp_timeline",
         latest_rfp_snapshot,
@@ -251,8 +251,8 @@ async function createDump(
     };
     await context.graphql(
       `
-        mutation CreateDump($dump: polyprogrammist_near_rfp_fix_editor_dumps_insert_input!) {
-          insert_polyprogrammist_near_rfp_fix_editor_dumps_one(
+        mutation CreateDump($dump: polyprogrammist_near_devhub_rfps_dumps_insert_input!) {
+          insert_polyprogrammist_near_devhub_rfps_dumps_one(
             object: $dump
           ) {
             receipt_id
@@ -282,8 +282,8 @@ async function createrfp(context, { id }) {
     };
     await context.graphql(
       `
-      mutation Createrfp($rfp: polyprogrammist_near_rfp_fix_editor_rfps_insert_input!) {
-        insert_polyprogrammist_near_rfp_fix_editor_rfps_one(object: $rfp) {id}
+      mutation Createrfp($rfp: polyprogrammist_near_devhub_rfps_rfps_insert_input!) {
+        insert_polyprogrammist_near_devhub_rfps_rfps_one(object: $rfp) {id}
       }
       `,
       mutationData
@@ -334,8 +334,8 @@ async function createrfpSnapshot(
     };
     await context.graphql(
       `
-      mutation CreaterfpSnapshot($rfp_snapshot: polyprogrammist_near_rfp_fix_editor_rfp_snapshots_insert_input!) {
-        insert_polyprogrammist_near_rfp_fix_editor_rfp_snapshots_one(object: $rfp_snapshot) {rfp_id, block_height}
+      mutation CreaterfpSnapshot($rfp_snapshot: polyprogrammist_near_devhub_rfps_rfp_snapshots_insert_input!) {
+        insert_polyprogrammist_near_devhub_rfps_rfp_snapshots_one(object: $rfp_snapshot) {rfp_id, block_height}
       }
       `,
       mutationData
@@ -360,7 +360,7 @@ const queryLatestSnapshot = async (rfp_id) => {
     const result = await context.graphql(
       `
       query GetLatestSnapshot($rfp_id: Int!) {
-        polyprogrammist_near_rfp_fix_editor_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_devhub_rfps_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
           rfp_id
           block_height
           ts
@@ -394,7 +394,7 @@ const queryLatestViews = async (rfp_id) => {
     const result = await context.graphql(
       `
       query GetLatestSnapshot($rfp_id: Int!) {
-        polyprogrammist_near_rfp_fix_editor_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_devhub_rfps_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
           rfp_id
           views
         }
