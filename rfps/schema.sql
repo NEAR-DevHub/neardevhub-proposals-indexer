@@ -31,7 +31,7 @@ CREATE TABLE
   );
 
 CREATE INDEX
-  idx_proposals_author_id ON proposals (author_id);
+  idx_rfps_author_id ON rfps (author_id);
 
 CREATE INDEX
   idx_rfp_snapshots_rfp_id ON rfp_snapshots (rfp_id);
@@ -43,7 +43,7 @@ CREATE INDEX
   idx_rfp_snapshots_ts ON rfp_snapshots (ts);
 
 CREATE INDEX
-  idx_proposal_snapshots_editor_id ON proposal_snapshots (editor_id);
+  idx_rfp_snapshots_editor_id ON rfp_snapshots (editor_id);
 
 CREATE INDEX
   idx_rfp_snapshots_labels ON rfp_snapshots USING GIN (labels);
