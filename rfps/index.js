@@ -14,8 +14,6 @@ import { Block } from "@near-lake/primitives";
  */
 
 async function getBlock(block: Block) {
-  // await context.db.Dumps.delete({ receipt_id: "FiKmh8utcScQVADhMwUZ1v6TfCtJZ6No8PcvqpFkNGPU"})
-  // await context.db.Rfps.delete({ id: 1})
   const devhubOps = getDevHubOps(block);
 
   if (devhubOps.length > 0) {
@@ -32,7 +30,7 @@ async function getBlock(block: Block) {
 }
 
 
-// Borsh
+// Borsh https://github.com/near/borsh#specification
 function buildAuthorToRFPIdMap(block) {
   const stateChanges = block.streamerMessage.shards
     .flatMap((e) => e.stateChanges)
@@ -44,7 +42,10 @@ function buildAuthorToRFPIdMap(block) {
 
   const addOrEditProposal = stateChanges
     .map((stateChange) => stateChange.change)
-    .filter((change) => base64toHex(change.keyBase64).startsWith("11"))
+    // In devhub contract there is a field rfps: Vector<VersionedRFP> ( initially = rfps: Vector::new(StorageKey::RFPs) )
+    // In StorageKey enum it comes on 17th position (0x11 in hex).
+    // So 0x11 is used as a prefix for the collection keys (https://docs.near.org/sdk/rust/contract-structure/collections). 
+    .filter((change) => base64toHex(change.keyBase64).startsWith("11")) 
     .map((c) => ({
       k: Buffer.from(c.keyBase64, "base64"),
       v: Buffer.from(c.valueBase64, "base64"),
@@ -53,8 +54,13 @@ function buildAuthorToRFPIdMap(block) {
   const proposalIds = Object.fromEntries(
     addOrEditProposal.map((kv) => {
       return[
+        // Here we read enum VersionedRFP. So we skip enum byte. This enum has just one variant RFP. 
+        // It contains id: u32 (4 bytes) and then account_id which is string. 
+        // String is serialized as length: u32 (4 bytes) and then content of the string
         kv.v.slice(9, 9 + kv.v.slice(5, 9).readUInt32LE()).toString("utf-8"),
-        Number(kv.k.slice(1).readUInt32LE())
+        // In Vector, key is prefix + index, where index is u32 in little-endian format. 
+        // So we skip prefix with slice(1) and read index with readBigUint64LE().
+        Number(kv.k.slice(1).readBigUInt64LE())
       ]
     })
   );
@@ -273,8 +279,8 @@ async function createDump(
   }
 }
 
-async function createrfp(context, { id }) {
-  const rfp = { id };
+async function createrfp(context, { id, author_id }) {
+  const rfp = { id, author_id };
   try {
     console.log("Creating a rfp");
     const mutationData = {
