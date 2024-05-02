@@ -91,7 +91,7 @@ function buildAuthorToProposalIdMap(block) {
     addOrEditProposal.map((kv) => {
       return [
         kv.v.slice(9, 9 + kv.v.slice(5, 9).readUInt32LE()).toString("utf-8"),
-        Number(kv.k.slice(1).readBigUInt64LE()),
+        Number(kv.k.slice(1).readUInt32LE()),
       ];
     })
   );

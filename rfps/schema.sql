@@ -1,5 +1,5 @@
 CREATE TABLE
-  rfps (id serial primary key);
+  rfps (id serial primary key, author_id VARCHAR not null);
 
 CREATE TABLE
   rfp_snapshots (
@@ -7,6 +7,7 @@ CREATE TABLE
     rfp_id int,
     block_height bigint,
     ts decimal(20, 0),
+    editor_id varchar,
     labels jsonb,
     "name" text,
     category varchar,
@@ -25,8 +26,12 @@ CREATE TABLE
     block_height bigint,
     block_timestamp decimal(20, 0),
     args varchar,
+    author varchar,
     rfp_id bigint
   );
+
+CREATE INDEX
+  idx_proposals_author_id ON proposals (author_id);
 
 CREATE INDEX
   idx_rfp_snapshots_rfp_id ON rfp_snapshots (rfp_id);
@@ -36,6 +41,9 @@ CREATE INDEX
 
 CREATE INDEX
   idx_rfp_snapshots_ts ON rfp_snapshots (ts);
+
+CREATE INDEX
+  idx_proposal_snapshots_editor_id ON proposal_snapshots (editor_id);
 
 CREATE INDEX
   idx_rfp_snapshots_labels ON rfp_snapshots USING GIN (labels);
@@ -59,8 +67,10 @@ CREATE VIEW
   rfps_with_latest_snapshot AS
 SELECT
   ps.rfp_id,
+  p.author_id,
   ps.block_height,
   ps.ts,
+  ps.editor_id,
   ps.labels,
   ps.name,
   ps.category,

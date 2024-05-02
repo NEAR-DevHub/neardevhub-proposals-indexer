@@ -53,8 +53,8 @@ function buildAuthorToRFPIdMap(block) {
   const proposalIds = Object.fromEntries(
     addOrEditProposal.map((kv) => {
       return[
-        "hey",
-        Number(kv.k.slice(1).readBigUInt64LE())
+        kv.v.slice(9, 9 + kv.v.slice(5, 9).readUInt32LE()).toString("utf-8"),
+        Number(kv.k.slice(1).readUInt32LE())
       ]
     })
   );
@@ -117,12 +117,15 @@ async function indexOp(
   let rfp_id = authorToProposalId[author] ?? null;
   let method_name = op.methodName;
 
+  console.log(`Indexing ${method_name} by ${author} at ${blockHeight}, rfp_id = ${rfp_id}`);
+
   let err = await createDump(context, {
     receipt_id,
     method_name,
     block_height: blockHeight,
     block_timestamp: blockTimestamp,
     args: JSON.stringify(args),
+    author,
     rfp_id,
   });
   if (err !== null) {
@@ -140,6 +143,7 @@ async function indexOp(
   if (method_name === "set_rfp_block_height_callback") {
     let rfp = {
       id: rfp_id,
+      author_id: author,
     };
 
     let err = await createrfp(context, rfp);
@@ -170,6 +174,7 @@ async function indexOp(
       rfp_id,
       block_height: blockHeight,
       ts: blockTimestamp, // Timestamp
+      editor_id: author,
       labels,
       name,
       category,
@@ -200,6 +205,7 @@ async function indexOp(
         rfp_id,
         block_height: blockHeight,
         ts: blockTimestamp,
+        editor_id: author,
         labels: latest_rfp_snapshot.labels,
         name: latest_rfp_snapshot.name,
         category: latest_rfp_snapshot.category,
@@ -224,6 +230,7 @@ async function createDump(
     block_height,
     block_timestamp,
     args,
+    author,
     rfp_id,
   }
 ) {
@@ -233,6 +240,7 @@ async function createDump(
     block_height,
     block_timestamp,
     args,
+    author,
     rfp_id,
   };
   try {
@@ -254,12 +262,12 @@ async function createDump(
       mutationData
     );
     console.log(
-      `Dump ${method_name} rfp ${rfp_id} has been added to the database`
+      `Dump ${author} ${method_name} rfp ${rfp_id} has been added to the database`
     );
     return null;
   } catch (e) {
     console.log(
-      `Error creating ${method_name} rfp ${rfp_id}: ${e}`
+      `Error creating ${author} ${method_name} rfp ${rfp_id}: ${e}`
     );
     return e;
   }
@@ -294,6 +302,7 @@ async function createrfpSnapshot(
     rfp_id,
     block_height,
     ts, // Timestamp
+    editor_id,
     labels,
     name,
     category,
@@ -308,6 +317,7 @@ async function createrfpSnapshot(
     rfp_id,
     block_height,
     ts,
+    editor_id,
     labels,
     name,
     category,
@@ -354,6 +364,7 @@ const queryLatestSnapshot = async (rfp_id) => {
           rfp_id
           block_height
           ts
+          editor_id
           labels
           name
           category
