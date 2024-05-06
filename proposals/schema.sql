@@ -14,6 +14,7 @@ CREATE TABLE
     summary text,
     description text,
     linked_proposals varchar, -- array of proposal ids "1,2,3,4"
+    linked_rfp int,
     requested_sponsorship_usd_amount decimal,
     requested_sponsorship_paid_in_currency varchar,
     requested_sponsor varchar,
@@ -88,6 +89,7 @@ SELECT
   ps.summary,
   ps.description,
   ps.linked_proposals,
+  ps.linked_rfp,
   ps.requested_sponsorship_usd_amount,
   ps.requested_sponsorship_paid_in_currency,
   ps.requested_sponsor,

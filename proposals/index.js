@@ -163,6 +163,7 @@ async function indexOp(
     let summary = args.body.summary;
     let description = args.body.description;
     let linked_proposals = args.body.linked_proposals;
+    let linked_rfp = args.body.linked_rfp;
     let requested_sponsorship_usd_amount =
       args.body.requested_sponsorship_usd_amount;
     let requested_sponsorship_paid_in_currency =
@@ -184,6 +185,7 @@ async function indexOp(
       summary,
       description,
       linked_proposals,
+      linked_rfp,
       requested_sponsorship_usd_amount, // u32
       requested_sponsorship_paid_in_currency, // ProposalFundingCurrency
       requested_sponsor, // AccountId
@@ -220,6 +222,7 @@ async function indexOp(
         summary: latest_proposal_snapshot.summary,
         description: latest_proposal_snapshot.description,
         linked_proposals: latest_proposal_snapshot.linked_proposals,
+        linked_rfp: latest_proposal_snapshot.linked_rfp,
         requested_sponsorship_usd_amount:
           latest_proposal_snapshot.requested_sponsorship_usd_amount,
         requested_sponsorship_paid_in_currency:
@@ -324,6 +327,7 @@ async function createProposalSnapshot(
     summary,
     description,
     linked_proposals, // Vec<ProposalId>
+    linked_rfp, // Option<RFPId>
     requested_sponsorship_usd_amount, // u32
     requested_sponsorship_paid_in_currency, // ProposalFundingCurrency
     requested_sponsor, // AccountId
@@ -347,6 +351,7 @@ async function createProposalSnapshot(
       linked_proposals && linked_proposals.length
         ? linked_proposals.join(",")
         : "", // Vec<ProposalId>
+    linked_rfp, // Option<RFPId>
     requested_sponsorship_usd_amount, // u32
     requested_sponsorship_paid_in_currency, // ProposalFundingCurrency
     requested_sponsor, // AccountId
@@ -399,6 +404,7 @@ const queryLatestSnapshot = async (proposal_id) => {
           summary
           description
           linked_proposals
+          linked_rfp
           requested_sponsorship_usd_amount
           requested_sponsorship_paid_in_currency
           requested_sponsor
