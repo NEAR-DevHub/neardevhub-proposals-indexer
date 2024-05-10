@@ -22,14 +22,18 @@ async function getBlock(block: Block) {
     const authorToProposalId = buildAuthorToProposalIdMap(block);
     const blockHeight = block.blockHeight;
     const blockTimestamp = block.header().timestampNanosec;
-    await Promise.all(
-      rfpOps.map((op) =>
-        indexOp(op, authorToRFPId, blockHeight, blockTimestamp, context)
-      ).concat(
-        proposalOps.map((op) =>
-          indexProposalLinkageOp(op, authorToProposalId, blockHeight, blockTimestamp, context)
-        ))
-    );
+    try {
+      await Promise.all(
+        rfpOps.map((op) =>
+          indexOp(op, authorToRFPId, blockHeight, blockTimestamp, context)
+        ).concat(
+          proposalOps.map((op) =>
+            indexProposalLinkageOp(op, authorToProposalId, blockHeight, blockTimestamp, context)
+          ))
+      );
+    } catch (error) {
+      console.error('Error processing block operations:', error);
+    }
   }
 }
 
@@ -219,34 +223,37 @@ async function indexOp(
   }
 
   if (method_name === "edit_rfp_timeline") {
-    let result = await queryLatestSnapshot(rfp_id);
-
-    if (Object.keys(result).length !== 0) {
-      let latest_rfp_snapshot =
-        result
-          .polyprogrammist_near_devhub_rfps_linked_rfp_snapshots[0];
-      console.log({
-        method: "edit_rfp_timeline",
-        latest_rfp_snapshot,
-      });
-      let rfp_snapshot = {
-        rfp_id,
-        block_height: blockHeight,
-        ts: blockTimestamp,
-        editor_id: author,
-        labels: latest_rfp_snapshot.labels,
-        linked_proposals: latest_rfp_snapshot.linked_proposals,
-        name: latest_rfp_snapshot.name,
-        category: latest_rfp_snapshot.category,
-        summary: latest_rfp_snapshot.summary,
-        description: latest_rfp_snapshot.description,
-        timeline: args.timeline, // TimelineStatus
-        submission_deadline: latest_rfp_snapshot.submission_deadline,
-        views: latest_rfp_snapshot.views + 1,
-      };
-      await createrfpSnapshot(context, rfp_snapshot);
-    } else {
-      console.log("Empty object latest_rfp_snapshot result", { result });
+    try {
+      let result = await queryLatestSnapshot(rfp_id);
+      if (Object.keys(result).length !== 0) {
+        let latest_rfp_snapshot =
+          result
+            .polyprogrammist_near_devhub_rfps_linked_rfp_snapshots[0];
+        console.log({
+          method: "edit_rfp_timeline",
+          latest_rfp_snapshot,
+        });
+        let rfp_snapshot = {
+          rfp_id,
+          block_height: blockHeight,
+          ts: blockTimestamp,
+          editor_id: author,
+          labels: latest_rfp_snapshot.labels,
+          linked_proposals: latest_rfp_snapshot.linked_proposals,
+          name: latest_rfp_snapshot.name,
+          category: latest_rfp_snapshot.category,
+          summary: latest_rfp_snapshot.summary,
+          description: latest_rfp_snapshot.description,
+          timeline: args.timeline, // TimelineStatus
+          submission_deadline: latest_rfp_snapshot.submission_deadline,
+          views: latest_rfp_snapshot.views + 1,
+        };
+        await createrfpSnapshot(context, rfp_snapshot);
+      } else {
+        console.log("Empty object latest_rfp_snapshot result", { result });
+      }
+    } catch (error) {
+      console.error("Error editing rfp timeline:", error);
     }
   }
 }
@@ -291,22 +298,26 @@ async function removeLinkedProposalFromSnapshot(rfp_id, proposal_id, blockHeight
 }
 
 async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockHeight, blockTimestamp) {
-  let latest_linked_rfp = await queryLatestLinkedRFP(proposal_id, blockTimestamp);
-  let last_snapshot = latest_linked_rfp.polyprogrammist_near_devhub_proposals_sierra_proposal_snapshots[0];
-  let latest_linked_rfp_id = undefined;
-  if (last_snapshot != undefined) {
-    latest_linked_rfp_id = last_snapshot.linked_rfp;
-  }
+  try {
+    let latest_linked_rfp = await queryLatestLinkedRFP(proposal_id, blockTimestamp);
+    let last_snapshot = latest_linked_rfp.polyprogrammist_near_devhub_proposals_sierra_proposal_snapshots[0];
+    let latest_linked_rfp_id = undefined;
+    if (last_snapshot != undefined) {
+      latest_linked_rfp_id = last_snapshot.linked_rfp;
+    }
 
-  if (new_linked_rfp !== latest_linked_rfp_id) {
-    if (new_linked_rfp !== undefined) {
-      console.log(`Adding linked_rfp ${new_linked_rfp} to proposal ${proposal_id}`)
-      addLinkedProposalToSnapshot(new_linked_rfp, proposal_id, blockHeight, blockTimestamp);
+    if (new_linked_rfp !== latest_linked_rfp_id) {
+      if (new_linked_rfp !== undefined) {
+        console.log(`Adding linked_rfp ${new_linked_rfp} to proposal ${proposal_id}`)
+        addLinkedProposalToSnapshot(new_linked_rfp, proposal_id, blockHeight, blockTimestamp);
+      }
+      if (latest_linked_rfp_id !== undefined) {
+        console.log(`Removing linked_rfp ${latest_linked_rfp_id} from proposal ${proposal_id}`)
+        removeLinkedProposalFromSnapshot(latest_linked_rfp_id, proposal_id, blockHeight, blockTimestamp);
+      }
     }
-    if (latest_linked_rfp_id !== undefined) {
-      console.log(`Removing linked_rfp ${latest_linked_rfp_id} from proposal ${proposal_id}`)
-      removeLinkedProposalFromSnapshot(latest_linked_rfp_id, proposal_id, blockHeight, blockTimestamp);
-    }
+  } catch (error) {
+    console.error("Error checking and updating linked proposals:", error);
   }
 }
 
