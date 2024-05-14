@@ -13,8 +13,6 @@ import { Block } from "@near-lake/primitives";
  * @param {block} Block - A Near Protocol Block
  */
 
-// TODO: update labels correctly
-
 async function getBlock(block: Block) {
   const rfpOps = getRFPOps(block);
   const proposalOps = getProposalOps(block);
@@ -184,6 +182,8 @@ async function indexProposalsOp(
       return;
     }
 
+    let linked_rfp = args.proposal.snapshot;
+
     await createProposalSnapshot(context, {
       proposal_id,
       block_height: blockHeight,
@@ -196,10 +196,12 @@ async function indexProposalsOp(
   }
 
   if (method_name === "edit_proposal") {
-    let labels = args.labels;
     let linked_rfp = args.body.linked_rfp;
 
     let result = await queryLatestProposalViews(proposal_id);
+    let latest_snapshot = result.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+    let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot[0].labels;
+
     let proposal_snapshot = {
       proposal_id,
       block_height: blockHeight,
@@ -207,10 +209,28 @@ async function indexProposalsOp(
       editor_id: author,
       labels,
       linked_rfp,
-      views:
-        result
-          .polyprogrammist_near_devhub_objects_proposal_snapshots[0]
-          .views + 1,
+      views: latest_snapshot[0].views + 1,
+      ...args.body,
+    };
+    await createProposalSnapshot(context, proposal_snapshot);
+    await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
+  }
+
+  if (method_name === "edit_proposal_internal") {
+    let linked_rfp = args.body.linked_rfp;
+
+    let result = await queryLatestProposalViews(proposal_id);
+    let latest_snapshot = result.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+    let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot[0].labels;
+
+    let proposal_snapshot = {
+      proposal_id,
+      block_height: blockHeight,
+      ts: blockTimestamp, // Timestamp
+      editor_id: author,
+      labels,
+      linked_rfp,
+      views: latest_snapshot[0].views + 1,
       ...args.body,
     };
     await createProposalSnapshot(context, proposal_snapshot);
@@ -251,7 +271,7 @@ async function indexProposalsOp(
         result
           .polyprogrammist_near_devhub_objects_proposal_snapshots[0];
       console.log({
-        method: "edit_proposal_timeline",
+        method: "edit_proposal_linked_rfp",
         latest_proposal_snapshot,
       });
       let proposal_snapshot = {
