@@ -14,7 +14,6 @@ import { Block } from "@near-lake/primitives";
  */
 
 async function getBlock(block: Block) {
-  console.log("Start handling block");
   const rfpOps = getRFPOps(block);
   const proposalOps = getProposalOps(block);
 
@@ -39,7 +38,6 @@ async function getBlock(block: Block) {
       console.error('Error processing block operations:', error);
     }
   }
-  console.log('Finish handling block');
 }
 
 function getAddOrEditObject(block, startsWith) {
@@ -213,7 +211,7 @@ async function indexProposalsOp(
 
     let result = await queryLatestProposalViews(proposal_id);
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
-    let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot[0].labels;
+    let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot.labels;
 
     let linked_proposals = args.proposal.snapshot.linked_proposals;
     linked_proposals = strArray(linked_proposals);
@@ -227,7 +225,7 @@ async function indexProposalsOp(
       labels,
       linked_rfp,
       linked_proposals,
-      views: latest_snapshot[0].views + 1,
+      views: latest_snapshot.views + 1,
     };
     await createProposalSnapshot(context, proposal_snapshot);
     await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
@@ -238,7 +236,7 @@ async function indexProposalsOp(
 
     let result = await queryLatestProposalViews(proposal_id);
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
-    let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot[0].labels;
+    let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot.labels;
     let linked_proposals = args.proposal.snapshot.linked_proposals;
     linked_proposals = strArray(linked_proposals);
 
@@ -251,7 +249,7 @@ async function indexProposalsOp(
       labels,
       linked_rfp,
       linked_proposals,
-      views: latest_snapshot[0].views + 1,
+      views: latest_snapshot.views + 1,
     };
     await createProposalSnapshot(context, proposal_snapshot);
     await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
@@ -369,22 +367,20 @@ async function indexRFPsOp(
 
   if (method_name === "edit_rfp") {
     let labels = args.labels;
-
     let result = await queryLatestRFPViews(rfp_id);
+    let latest_snapshot = result.polyprogrammist_near_devhub_objects_rfp_snapshots[0];
     let rfp_snapshot = {
       ...args.body,
       rfp_id,
       block_height: blockHeight,
       ts: blockTimestamp, // Timestamp
       editor_id: author,
-      linked_proposals: result.linked_proposals,
+      linked_proposals: latest_snapshot.linked_proposals,
       labels,
-      views:
-        result
-          .polyprogrammist_near_devhub_objects_rfp_snapshots[0]
-          .views + 1,
+      views:latest_snapshot.views + 1,
     };
     await createrfpSnapshot(context, rfp_snapshot);
+    await checkAndUpdateLabels(latest_snapshot.labels, labels, arrayFromStr(latest_snapshot.linked_proposals));
   }
 
   if (method_name === "edit_rfp_timeline") {
@@ -418,7 +414,7 @@ async function indexRFPsOp(
 }
 
 function arrayFromStr(str) {
-  return str.split(",").filter((x) => x !== "");
+  return str ? str.split(",").filter((x) => x !== ""): [];
 }
 
 function addToLinkedProposals(linked_proposals, proposal_id) {
@@ -441,7 +437,6 @@ async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, bl
         .polyprogrammist_near_devhub_objects_rfp_snapshots[0];
 
     let linked_proposals = modifyCallback(latest_rfp_snapshot.linked_proposals, proposal_id);
-    console.log("rfp, proposal, linked_proposals", rfp_id, proposal_id, linked_proposals);
     let rfp_snapshot = {
       ...latest_rfp_snapshot,
       rfp_id,
@@ -489,6 +484,37 @@ async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockH
   }
 }
 
+async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals) {
+  try {
+    const eqSet = (xs, ys) =>
+      xs.size === ys.size &&
+      [...xs].every((x) => ys.has(x));
+
+    if (old_labels == undefined) {
+      old_labels = [];
+    }
+
+    if (!eqSet(new Set(old_labels), new Set(new_labels))) {
+      for (let proposal_id of linked_proposals) {
+        let result = await queryLatestProposalSnapshot(proposal_id);
+        if (Object.keys(result).length !== 0) {
+          let latest_proposal_snapshot =
+            result
+              .polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+          let proposal_snapshot = {
+            ...latest_proposal_snapshot,
+            labels: new_labels,
+          };
+          await createProposalSnapshot(context, proposal_snapshot);
+        } else {
+          console.log("Empty object latest_proposal_snapshot result", { result });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error checking and updating labels:", error);
+  }
+}
 
 async function createDump(
   context,
@@ -885,7 +911,7 @@ const queryLatestRFPSnapshot = async (rfp_id) => {
   }
 };
 
-const queryLatestRFPViews = async (rfp_id) => {
+const  queryLatestRFPViews = async (rfp_id) => {
   const queryData = {
     rfp_id,
   };
@@ -895,6 +921,7 @@ const queryLatestRFPViews = async (rfp_id) => {
       query GetLatestSnapshot($rfp_id: Int!) {
         polyprogrammist_near_devhub_objects_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
           rfp_id
+          linked_proposals
           views
         }
       }
