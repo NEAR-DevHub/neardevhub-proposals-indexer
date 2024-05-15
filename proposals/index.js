@@ -14,10 +14,14 @@ import { Block } from "@near-lake/primitives";
  */
 
 async function getBlock(block: Block) {
+  console.log("Start handling block");
   const rfpOps = getRFPOps(block);
   const proposalOps = getProposalOps(block);
 
-  if (rfpOps.length > 0 || proposalOps.length > 0) {
+  const rfpOpsLen = rfpOps.length;
+  const proposalOpsLen = proposalOps.length;
+
+  if (rfpOpsLen > 0 || proposalOpsLen > 0) {
     const authorToRFPId = buildAuthorToRFPIdMap(block);
     const authorToProposalId = buildAuthorToProposalIdMap(block);
     const blockHeight = block.blockHeight;
@@ -35,6 +39,7 @@ async function getBlock(block: Block) {
       console.error('Error processing block operations:', error);
     }
   }
+  console.log('Finish handling block');
 }
 
 function getAddOrEditObject(block, startsWith) {
@@ -142,7 +147,6 @@ async function indexProposalsOp(
   context
 ) {
   let receipt_id = op.receiptId;
-
   let args = op.args;
   let author = Object.keys(authorToProposalId)[0];
   console.log(`Indexing ${op.methodName} by ${author} at ${blockHeight}`);
@@ -182,7 +186,7 @@ async function indexProposalsOp(
       return;
     }
 
-    let linked_rfp = args.proposal.snapshot;
+    let linked_rfp = args.proposal.snapshot.linked_rfp;
 
     await createProposalSnapshot(context, {
       proposal_id,
@@ -446,11 +450,13 @@ async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockH
     if (new_linked_rfp !== latest_linked_rfp_id) {
       if (new_linked_rfp !== undefined) {
         console.log(`Adding linked_rfp ${new_linked_rfp} to proposal ${proposal_id}`)
-        addLinkedProposalToSnapshot(new_linked_rfp, proposal_id, blockHeight, blockTimestamp);
+        await addLinkedProposalToSnapshot(new_linked_rfp, proposal_id, blockHeight, blockTimestamp);
+        console.log(`Proposal added to new RFP snapshot`)
       }
       if (latest_linked_rfp_id !== undefined) {
         console.log(`Removing linked_rfp ${latest_linked_rfp_id} from proposal ${proposal_id}`)
-        removeLinkedProposalFromSnapshot(latest_linked_rfp_id, proposal_id, blockHeight, blockTimestamp);
+        await removeLinkedProposalFromSnapshot(latest_linked_rfp_id, proposal_id, blockHeight, blockTimestamp);
+        console.log(`Proposal removed from old RFP snapshot`)
       }
     }
   } catch (error) {
@@ -639,7 +645,7 @@ const queryLatestProposalSnapshot = async (proposal_id) => {
     console.log({ result });
     return result;
   } catch (e) {
-    console.log("Error retrieving latest snapshot:", e);
+    console.log("Error retrieving latest Proposal snapshot:", e);
     return null;
   }
 };
@@ -663,7 +669,7 @@ const queryLatestProposalViews = async (proposal_id) => {
     console.log({ result });
     return result;
   } catch (e) {
-    console.log("Error retrieving latest snapshot:", e);
+    console.log("Error retrieving latest  Proposal snapshot for views:", e);
     return null;
   }
 };
@@ -855,7 +861,7 @@ const queryLatestRFPSnapshot = async (rfp_id) => {
     console.log({ result });
     return result;
   } catch (e) {
-    console.log("Error retrieving latest snapshot:", e);
+    console.log("Error retrieving latest RFP snapshot:", e);
     return null;
   }
 };
@@ -879,7 +885,7 @@ const queryLatestRFPViews = async (rfp_id) => {
     console.log({ result });
     return result;
   } catch (e) {
-    console.log("Error retrieving latest snapshot:", e);
+    console.log("Error retrieving latest RFP snapshot for views:", e);
     return null;
   }
 };
