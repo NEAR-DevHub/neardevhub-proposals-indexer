@@ -139,6 +139,12 @@ function getRFPOps(block) {
   return getDevHubOps(block, ["edit_rfp", "edit_rfp_timeline", "edit_rfp_internal"], ["set_rfp_block_height_callback"]);
 }
 
+function strArray(arr) {
+  return arr && arr.length
+        ? arr.join(",")
+        : ""; // Vec<ProposalId>
+}
+
 async function indexProposalsOp(
   op,
   authorToProposalId,
@@ -187,15 +193,18 @@ async function indexProposalsOp(
     }
 
     let linked_rfp = args.proposal.snapshot.linked_rfp;
+    let linked_proposals = args.proposal.snapshot.linked_proposals;
+    linked_proposals = strArray(linked_proposals);
 
-    await createProposalSnapshot(context, {
+    let proposal_snapshot = {
+      ...args.proposal.snapshot,
       proposal_id,
       block_height: blockHeight,
       ts: blockTimestamp,
       views: 1,
-      ...args.proposal.snapshot,
-    });
-
+      linked_proposals,
+    }
+    await createProposalSnapshot(context, proposal_snapshot);
     await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
   }
 
@@ -206,15 +215,19 @@ async function indexProposalsOp(
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
     let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot[0].labels;
 
+    let linked_proposals = args.proposal.snapshot.linked_proposals;
+    linked_proposals = strArray(linked_proposals);
+
     let proposal_snapshot = {
+      ...args.body,
       proposal_id,
       block_height: blockHeight,
       ts: blockTimestamp, // Timestamp
       editor_id: author,
       labels,
       linked_rfp,
+      linked_proposals,
       views: latest_snapshot[0].views + 1,
-      ...args.body,
     };
     await createProposalSnapshot(context, proposal_snapshot);
     await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
@@ -226,16 +239,19 @@ async function indexProposalsOp(
     let result = await queryLatestProposalViews(proposal_id);
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
     let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot[0].labels;
+    let linked_proposals = args.proposal.snapshot.linked_proposals;
+    linked_proposals = strArray(linked_proposals);
 
     let proposal_snapshot = {
+      ...args.body,
       proposal_id,
       block_height: blockHeight,
       ts: blockTimestamp, // Timestamp
       editor_id: author,
       labels,
       linked_rfp,
+      linked_proposals,
       views: latest_snapshot[0].views + 1,
-      ...args.body,
     };
     await createProposalSnapshot(context, proposal_snapshot);
     await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
@@ -253,13 +269,13 @@ async function indexProposalsOp(
         latest_proposal_snapshot,
       });
       let proposal_snapshot = {
+        ...latest_proposal_snapshot,
         proposal_id,
         block_height: blockHeight,
         ts: blockTimestamp,
         editor_id: author,
         timeline: args.timeline, // TimelineStatus
         views: latest_proposal_snapshot.views + 1,
-        ...latest_proposal_snapshot,
       };
       await createProposalSnapshot(context, proposal_snapshot);
     } else {
@@ -279,6 +295,7 @@ async function indexProposalsOp(
         latest_proposal_snapshot,
       });
       let proposal_snapshot = {
+        ...latest_proposal_snapshot,
         proposal_id,
         linked_rfp: linked_rfp,
         block_height: blockHeight,
@@ -286,7 +303,6 @@ async function indexProposalsOp(
         editor_id: author,
         timeline: args.timeline, // TimelineStatus
         views: latest_proposal_snapshot.views + 1,
-        ...latest_proposal_snapshot,
       };
       await createProposalSnapshot(context, proposal_snapshot);
       await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
@@ -342,11 +358,12 @@ async function indexRFPsOp(
     }
 
     await createrfpSnapshot(context, {
+      ...args.rfp.snapshot,
       rfp_id,
+      linked_proposals: "",
       block_height: blockHeight,
       ts: blockTimestamp,
       views: 1,
-      ...args.rfp.snapshot,
     });
   }
 
@@ -355,16 +372,17 @@ async function indexRFPsOp(
 
     let result = await queryLatestRFPViews(rfp_id);
     let rfp_snapshot = {
+      ...args.body,
       rfp_id,
       block_height: blockHeight,
       ts: blockTimestamp, // Timestamp
       editor_id: author,
+      linked_proposals: result.linked_proposals,
       labels,
       views:
         result
           .polyprogrammist_near_devhub_objects_rfp_snapshots[0]
           .views + 1,
-      ...args.body,
     };
     await createrfpSnapshot(context, rfp_snapshot);
   }
@@ -381,13 +399,13 @@ async function indexRFPsOp(
           latest_rfp_snapshot,
         });
         let rfp_snapshot = {
+          ...latest_rfp_snapshot,
           rfp_id,
           block_height: blockHeight,
           ts: blockTimestamp,
           editor_id: author,
           timeline: args.timeline, // TimelineStatus
           views: latest_rfp_snapshot.views + 1,
-          ...latest_rfp_snapshot,
         };
         await createrfpSnapshot(context, rfp_snapshot);
       } else {
@@ -399,13 +417,19 @@ async function indexRFPsOp(
   }
 }
 
+function arrayFromStr(str) {
+  return str.split(",").filter((x) => x !== "");
+}
+
 function addToLinkedProposals(linked_proposals, proposal_id) {
+  linked_proposals = arrayFromStr(linked_proposals);
   linked_proposals.push(proposal_id);
-  return linked_proposals;
+  return strArray(linked_proposals);
 }
 
 function removeFromLinkedProposals(linked_proposals, proposal_id) {
-  return linked_proposals.filter((id) => id !== proposal_id);
+  linked_proposals = arrayFromStr(linked_proposals);
+  return strArray(linked_proposals.filter((id) => id !== proposal_id));
 }
 
 async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, blockTimestamp, modifyCallback) {
@@ -417,12 +441,13 @@ async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, bl
         .polyprogrammist_near_devhub_objects_rfp_snapshots[0];
 
     let linked_proposals = modifyCallback(latest_rfp_snapshot.linked_proposals, proposal_id);
+    console.log("rfp, proposal, linked_proposals", rfp_id, proposal_id, linked_proposals);
     let rfp_snapshot = {
+      ...latest_rfp_snapshot,
       rfp_id,
       linked_proposals: linked_proposals,
       block_height: blockHeight,
       ts: blockTimestamp,
-      ...latest_rfp_snapshot,
     };
     await createrfpSnapshot(context, rfp_snapshot);
   } else {
@@ -572,10 +597,7 @@ async function createProposalSnapshot(
     category,
     summary,
     description,
-    linked_proposals:
-      linked_proposals && linked_proposals.length
-        ? linked_proposals.join(",")
-        : "", // Vec<ProposalId>
+    linked_proposals: linked_proposals,
     linked_rfp, // Option<RFPId>
     requested_sponsorship_usd_amount, // u32
     requested_sponsorship_paid_in_currency, // ProposalFundingCurrency
@@ -758,7 +780,6 @@ async function createrfpSnapshot(
     labels,
     linked_proposals,
     name,
-    category,
     summary,
     description,
     timeline, // TimelineStatus
@@ -774,7 +795,6 @@ async function createrfpSnapshot(
     labels,
     linked_proposals,
     name,
-    category,
     summary,
     description,
     views,
@@ -847,7 +867,6 @@ const queryLatestRFPSnapshot = async (rfp_id) => {
           labels
           linked_proposals
           name
-          category
           summary
           description
           timeline
