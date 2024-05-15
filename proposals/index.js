@@ -697,8 +697,8 @@ async function createRFPDump(
     };
     await context.graphql(
       `
-        mutation CreateDump($dump: polyprogrammist_near_devhub_objects_rfp_rfp_dumps_insert_input!) {
-          insert_polyprogrammist_near_devhub_objects_rfp_rfp_dumps_one(
+        mutation CreateDump($dump: polyprogrammist_near_devhub_objects_rfp_dumps_insert_input!) {
+          insert_polyprogrammist_near_devhub_objects_rfp_dumps_one(
             object: $dump
           ) {
             receipt_id
