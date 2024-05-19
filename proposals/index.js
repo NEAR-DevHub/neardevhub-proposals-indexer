@@ -45,7 +45,7 @@ function getAddOrEditObject(block, startsWith) {
     .flatMap((e) => e.stateChanges)
     .filter(
       (stateChange) =>
-        stateChange.change.accountId === "devhub.near" &&
+        stateChange.change.accountId === "truedove38.near" &&
         stateChange.type === "data_update"
     );
 
@@ -104,7 +104,7 @@ function base64toHex(encodedValue) {
 function getDevHubOps(block, methodNames, callbackNames) {
   return block
     .actions()
-    .filter((action) => action.receiverId === "devhub.near")
+    .filter((action) => action.receiverId === "truedove38.near")
     .flatMap((action) =>
       action.operations
         .filter((operation) => operation["FunctionCall"])
@@ -119,7 +119,7 @@ function getDevHubOps(block, methodNames, callbackNames) {
         .filter(
           (operation) =>
             methodNames.includes(operation.methodName) ||
-            (callbackNames.includes(operation.methodName) && operation.caller === "devhub.near")
+            (callbackNames.includes(operation.methodName) && operation.caller === "truedove38.near")
         )
         .map((functionCallOperation) => ({
           ...functionCallOperation,
@@ -192,12 +192,13 @@ async function indexProposalsOp(
 
     let linked_rfp = args.proposal.snapshot.linked_rfp;
     let linked_proposals = args.proposal.snapshot.linked_proposals;
-    linked_proposals = strArray(linked_proposals);
 
     let proposal_snapshot = {
       ...args.proposal.snapshot,
       proposal_id,
       block_height: blockHeight,
+      proposal_version: args.proposal.proposal_version,
+      social_db_post_block_height: 0,
       ts: blockTimestamp,
       views: 1,
       linked_proposals,
@@ -210,21 +211,19 @@ async function indexProposalsOp(
     let linked_rfp = args.body.linked_rfp;
 
     let result = await queryLatestProposalViews(proposal_id);
-    let latest_snapshot = result.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+    let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
     let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot.labels;
-
-    let linked_proposals = args.proposal.snapshot.linked_proposals;
-    linked_proposals = strArray(linked_proposals);
 
     let proposal_snapshot = {
       ...args.body,
       proposal_id,
+      proposal_version: latest_snapshot.proposal_version,
+      social_db_post_block_height: latest_snapshot.social_db_post_block_height,
       block_height: blockHeight,
       ts: blockTimestamp, // Timestamp
       editor_id: author,
       labels,
       linked_rfp,
-      linked_proposals,
       views: latest_snapshot.views + 1,
     };
     await createProposalSnapshot(context, proposal_snapshot);
@@ -235,20 +234,19 @@ async function indexProposalsOp(
     let linked_rfp = args.body.linked_rfp;
 
     let result = await queryLatestProposalViews(proposal_id);
-    let latest_snapshot = result.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+    let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
     let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot.labels;
-    let linked_proposals = args.proposal.snapshot.linked_proposals;
-    linked_proposals = strArray(linked_proposals);
 
     let proposal_snapshot = {
       ...args.body,
       proposal_id,
+      proposal_version: latest_snapshot.proposal_version,
+      social_db_post_block_height: latest_snapshot.social_db_post_block_height,
       block_height: blockHeight,
       ts: blockTimestamp, // Timestamp
       editor_id: author,
       labels,
       linked_rfp,
-      linked_proposals,
       views: latest_snapshot.views + 1,
     };
     await createProposalSnapshot(context, proposal_snapshot);
@@ -261,7 +259,7 @@ async function indexProposalsOp(
     if (Object.keys(result).length !== 0) {
       let latest_proposal_snapshot =
         result
-          .polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+          .polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
       console.log({
         method: "edit_proposal_timeline",
         latest_proposal_snapshot,
@@ -287,7 +285,7 @@ async function indexProposalsOp(
       let linked_rfp = args.rfp_id;
       let latest_proposal_snapshot =
         result
-          .polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+          .polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
       console.log({
         method: "edit_proposal_linked_rfp",
         latest_proposal_snapshot,
@@ -358,8 +356,10 @@ async function indexRFPsOp(
     await createrfpSnapshot(context, {
       ...args.rfp.snapshot,
       rfp_id,
-      linked_proposals: "",
+      linked_proposals: [],
       block_height: blockHeight,
+      rfp_version: args.rfp.rfp_version,
+      social_db_post_block_height: 0,
       ts: blockTimestamp,
       views: 1,
     });
@@ -368,11 +368,13 @@ async function indexRFPsOp(
   if (method_name === "edit_rfp") {
     let labels = args.labels;
     let result = await queryLatestRFPViews(rfp_id);
-    let latest_snapshot = result.polyprogrammist_near_devhub_objects_rfp_snapshots[0];
+    let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
     let rfp_snapshot = {
       ...args.body,
       rfp_id,
       block_height: blockHeight,
+      social_db_post_block_height: latest_snapshot.social_db_post_block_height,
+      rfp_version: latest_snapshot.rfp_version,
       ts: blockTimestamp, // Timestamp
       editor_id: author,
       linked_proposals: latest_snapshot.linked_proposals,
@@ -380,7 +382,7 @@ async function indexRFPsOp(
       views:latest_snapshot.views + 1,
     };
     await createrfpSnapshot(context, rfp_snapshot);
-    await checkAndUpdateLabels(latest_snapshot.labels, labels, arrayFromStr(latest_snapshot.linked_proposals));
+    await checkAndUpdateLabels(latest_snapshot.labels, labels, latest_snapshot.linked_proposals, blockHeight, blockTimestamp);
   }
 
   if (method_name === "edit_rfp_timeline") {
@@ -389,7 +391,7 @@ async function indexRFPsOp(
       if (Object.keys(result).length !== 0) {
         let latest_rfp_snapshot =
           result
-            .polyprogrammist_near_devhub_objects_rfp_snapshots[0];
+            .polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
         console.log({
           method: "edit_rfp_timeline",
           latest_rfp_snapshot,
@@ -418,14 +420,12 @@ function arrayFromStr(str) {
 }
 
 function addToLinkedProposals(linked_proposals, proposal_id) {
-  linked_proposals = arrayFromStr(linked_proposals);
   linked_proposals.push(proposal_id);
-  return strArray(linked_proposals);
+  return linked_proposals;
 }
 
 function removeFromLinkedProposals(linked_proposals, proposal_id) {
-  linked_proposals = arrayFromStr(linked_proposals);
-  return strArray(linked_proposals.filter((id) => id !== proposal_id));
+  return linked_proposals.filter((id) => id !== proposal_id);
 }
 
 async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, blockTimestamp, modifyCallback) {
@@ -434,7 +434,7 @@ async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, bl
   if (Object.keys(result).length !== 0) {
     let latest_rfp_snapshot =
       result
-        .polyprogrammist_near_devhub_objects_rfp_snapshots[0];
+        .polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
 
     let linked_proposals = modifyCallback(latest_rfp_snapshot.linked_proposals, proposal_id);
     let rfp_snapshot = {
@@ -461,19 +461,19 @@ async function removeLinkedProposalFromSnapshot(rfp_id, proposal_id, blockHeight
 async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockHeight, blockTimestamp) {
   try {
     let latest_linked_rfp = await queryLatestLinkedRFP(proposal_id, blockTimestamp);
-    let last_snapshot = latest_linked_rfp.polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+    let last_snapshot = latest_linked_rfp.polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
     let latest_linked_rfp_id = undefined;
     if (last_snapshot != undefined) {
       latest_linked_rfp_id = last_snapshot.linked_rfp;
     }
 
     if (new_linked_rfp !== latest_linked_rfp_id) {
-      if (new_linked_rfp !== undefined) {
+      if (new_linked_rfp !== undefined && new_linked_rfp !== null) {
         console.log(`Adding linked_rfp ${new_linked_rfp} to proposal ${proposal_id}`)
         await addLinkedProposalToSnapshot(new_linked_rfp, proposal_id, blockHeight, blockTimestamp);
         console.log(`Proposal added to new RFP snapshot`)
       }
-      if (latest_linked_rfp_id !== undefined) {
+      if (latest_linked_rfp_id !== undefined && latest_linked_rfp_id !== null) {
         console.log(`Removing linked_rfp ${latest_linked_rfp_id} from proposal ${proposal_id}`)
         await removeLinkedProposalFromSnapshot(latest_linked_rfp_id, proposal_id, blockHeight, blockTimestamp);
         console.log(`Proposal removed from old RFP snapshot`)
@@ -484,7 +484,7 @@ async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockH
   }
 }
 
-async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals) {
+async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals, blockHeight, blockTimestamp) {
   try {
     const eqSet = (xs, ys) =>
       xs.size === ys.size &&
@@ -500,10 +500,12 @@ async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals) {
         if (Object.keys(result).length !== 0) {
           let latest_proposal_snapshot =
             result
-              .polyprogrammist_near_devhub_objects_proposal_snapshots[0];
+              .polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
           let proposal_snapshot = {
             ...latest_proposal_snapshot,
             labels: new_labels,
+            block_height: blockHeight,
+            ts: blockTimestamp,
           };
           await createProposalSnapshot(context, proposal_snapshot);
         } else {
@@ -545,8 +547,8 @@ async function createDump(
     };
     await context.graphql(
       `
-        mutation CreateDump($dump: polyprogrammist_near_devhub_objects_dumps_insert_input!) {
-          insert_polyprogrammist_near_devhub_objects_dumps_one(
+        mutation CreateDump($dump: polyprogrammist_near_devhub_objects_s_dumps_insert_input!) {
+          insert_polyprogrammist_near_devhub_objects_s_dumps_one(
             object: $dump
           ) {
             receipt_id
@@ -576,8 +578,8 @@ async function createProposal(context, { id, author_id }) {
     };
     await context.graphql(
       `
-      mutation CreateProposal($proposal: polyprogrammist_near_devhub_objects_proposals_insert_input!) {
-        insert_polyprogrammist_near_devhub_objects_proposals_one(object: $proposal) {id}
+      mutation CreateProposal($proposal: polyprogrammist_near_devhub_objects_s_proposals_insert_input!) {
+        insert_polyprogrammist_near_devhub_objects_s_proposals_one(object: $proposal) {id}
       }
       `,
       mutationData
@@ -594,10 +596,13 @@ async function createProposalSnapshot(
   context,
   {
     proposal_id,
+    social_db_post_block_height,
+    proposal_version,
     block_height,
     ts, // Timestamp
     editor_id,
     labels,
+    proposal_body_version,
     name,
     category,
     summary,
@@ -615,10 +620,13 @@ async function createProposalSnapshot(
 ) {
   const proposal_snapshot = {
     proposal_id,
+    social_db_post_block_height,
+    proposal_version,
     block_height,
     ts,
     editor_id,
     labels,
+    proposal_body_version,
     name,
     category,
     summary,
@@ -640,8 +648,8 @@ async function createProposalSnapshot(
     };
     await context.graphql(
       `
-      mutation CreateProposalSnapshot($proposal_snapshot: polyprogrammist_near_devhub_objects_proposal_snapshots_insert_input!) {
-        insert_polyprogrammist_near_devhub_objects_proposal_snapshots_one(object: $proposal_snapshot) {proposal_id, block_height}
+      mutation CreateProposalSnapshot($proposal_snapshot: polyprogrammist_near_devhub_objects_s_proposal_snapshots_insert_input!) {
+        insert_polyprogrammist_near_devhub_objects_s_proposal_snapshots_one(object: $proposal_snapshot) {proposal_id, block_height}
       }
       `,
       mutationData
@@ -666,12 +674,15 @@ const queryLatestProposalSnapshot = async (proposal_id) => {
     const result = await context.graphql(
       `
       query GetLatestSnapshot($proposal_id: Int!) {
-        polyprogrammist_near_devhub_objects_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_devhub_objects_s_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}}, order_by: {ts: desc}, limit: 1) {
           proposal_id
           block_height
+          proposal_version
           ts
           editor_id
+          social_db_post_block_height
           labels
+          proposal_body_version
           name
           category
           summary
@@ -706,7 +717,7 @@ const queryLatestProposalViews = async (proposal_id) => {
     const result = await context.graphql(
       `
       query GetLatestSnapshot($proposal_id: Int!) {
-        polyprogrammist_near_devhub_objects_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_devhub_objects_s_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}}, order_by: {ts: desc}, limit: 1) {
           proposal_id
           views
         }
@@ -751,8 +762,8 @@ async function createRFPDump(
     };
     await context.graphql(
       `
-        mutation CreateDump($dump: polyprogrammist_near_devhub_objects_rfp_dumps_insert_input!) {
-          insert_polyprogrammist_near_devhub_objects_rfp_dumps_one(
+        mutation CreateDump($dump: polyprogrammist_near_devhub_objects_s_rfp_dumps_insert_input!) {
+          insert_polyprogrammist_near_devhub_objects_s_rfp_dumps_one(
             object: $dump
           ) {
             receipt_id
@@ -782,8 +793,8 @@ async function createRFP(context, { id, author_id }) {
     };
     await context.graphql(
       `
-      mutation Createrfp($rfp: polyprogrammist_near_devhub_objects_rfps_insert_input!) {
-        insert_polyprogrammist_near_devhub_objects_rfps_one(object: $rfp) {id}
+      mutation Createrfp($rfp: polyprogrammist_near_devhub_objects_s_rfps_insert_input!) {
+        insert_polyprogrammist_near_devhub_objects_s_rfps_one(object: $rfp) {id}
       }
       `,
       mutationData
@@ -801,10 +812,13 @@ async function createrfpSnapshot(
   {
     rfp_id,
     block_height,
+    social_db_post_block_height,
+    rfp_version,
     ts, // Timestamp
     editor_id,
     labels,
     linked_proposals,
+    rfp_body_version,
     name,
     summary,
     description,
@@ -816,10 +830,13 @@ async function createrfpSnapshot(
   const rfp_snapshot = {
     rfp_id,
     block_height,
+    social_db_post_block_height,
+    rfp_version,
     ts,
     editor_id,
     labels,
     linked_proposals,
+    rfp_body_version,
     name,
     summary,
     description,
@@ -834,8 +851,8 @@ async function createrfpSnapshot(
     };
     await context.graphql(
       `
-      mutation CreaterfpSnapshot($rfp_snapshot: polyprogrammist_near_devhub_objects_rfp_snapshots_insert_input!) {
-        insert_polyprogrammist_near_devhub_objects_rfp_snapshots_one(object: $rfp_snapshot) {rfp_id, block_height}
+      mutation CreaterfpSnapshot($rfp_snapshot: polyprogrammist_near_devhub_objects_s_rfp_snapshots_insert_input!) {
+        insert_polyprogrammist_near_devhub_objects_s_rfp_snapshots_one(object: $rfp_snapshot) {rfp_id, block_height}
       }
       `,
       mutationData
@@ -861,7 +878,7 @@ const queryLatestLinkedRFP = async (proposal_id, blockTimestamp) => {
     const result = await context.graphql(
       `
       query GetLatestLinkedRFP($proposal_id: Int!, $timestamp: numeric!) {
-        polyprogrammist_near_devhub_objects_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}, ts: {_lt: $timestamp}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_devhub_objects_s_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}, ts: {_lt: $timestamp}}, order_by: {ts: desc}, limit: 1) {
           proposal_id
           linked_rfp
         }
@@ -885,13 +902,16 @@ const queryLatestRFPSnapshot = async (rfp_id) => {
     const result = await context.graphql(
       `
       query GetLatestSnapshot($rfp_id: Int!) {
-        polyprogrammist_near_devhub_objects_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_devhub_objects_s_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
           rfp_id
           block_height
+          rfp_version
           ts
           editor_id
+          social_db_post_block_height
           labels
           linked_proposals
+          rfp_body_version
           name
           summary
           description
@@ -919,7 +939,7 @@ const  queryLatestRFPViews = async (rfp_id) => {
     const result = await context.graphql(
       `
       query GetLatestSnapshot($rfp_id: Int!) {
-        polyprogrammist_near_devhub_objects_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
+        polyprogrammist_near_devhub_objects_s_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
           rfp_id
           linked_proposals
           views
