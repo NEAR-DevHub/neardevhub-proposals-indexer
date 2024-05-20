@@ -212,7 +212,7 @@ async function indexProposalsOp(
 
     let result = await queryLatestProposalViews(proposal_id);
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_test_proposal_snapshots[0];
-    let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot.labels;
+    let labels = (linked_rfp === undefined || linked_rfp === null) ? args.labels : latest_snapshot.labels;
 
     let proposal_snapshot = {
       ...args.body,
@@ -236,7 +236,7 @@ async function indexProposalsOp(
 
     let result = await queryLatestProposalViews(proposal_id);
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_test_proposal_snapshots[0];
-    let labels = (linked_rfp === undefined) ? args.labels : latest_snapshot.labels;
+    let labels = (linked_rfp === undefined || linked_rfp === null) ? args.labels : latest_snapshot.labels;
 
     let proposal_snapshot = {
       ...args.body,
