@@ -210,7 +210,7 @@ async function indexProposalsOp(
   if (method_name === "edit_proposal") {
     let linked_rfp = args.body.linked_rfp;
 
-    let result = await queryLatestProposalViews(proposal_id);
+    let result = await queryLatestProposalSnapshot(proposal_id);
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
     let labels = (linked_rfp === undefined || linked_rfp === null) ? args.labels : latest_snapshot.labels;
 
@@ -234,7 +234,7 @@ async function indexProposalsOp(
   if (method_name === "edit_proposal_internal") {
     let linked_rfp = args.body.linked_rfp;
 
-    let result = await queryLatestProposalViews(proposal_id);
+    let result = await queryLatestProposalSnapshot(proposal_id);
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
     let labels = (linked_rfp === undefined || linked_rfp === null) ? args.labels : latest_snapshot.labels;
 
@@ -325,7 +325,7 @@ async function indexRFPsOp(
 
   if (method_name === "edit_rfp") {
     let labels = args.labels;
-    let result = await queryLatestRFPViews(rfp_id);
+    let result = await queryLatestRFPSnapshot(rfp_id);
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
     let rfp_snapshot = {
       ...args.body,
