@@ -195,6 +195,7 @@ async function indexProposalsOp(
 
     let proposal_snapshot = {
       ...args.proposal.snapshot,
+      timeline: JSON.stringify(args.proposal.snapshot.timeline),
       proposal_id,
       block_height: blockHeight,
       proposal_version: args.proposal.proposal_version,
@@ -216,6 +217,7 @@ async function indexProposalsOp(
 
     let proposal_snapshot = {
       ...args.body,
+      timeline: JSON.stringify(args.body.timeline),
       proposal_id,
       proposal_version: latest_snapshot.proposal_version,
       social_db_post_block_height: latest_snapshot.social_db_post_block_height,
@@ -239,6 +241,7 @@ async function indexProposalsOp(
 
     let proposal_snapshot = {
       ...args.body,
+      timeline: JSON.stringify(args.body.timeline),
       proposal_id,
       proposal_version: latest_snapshot.proposal_version,
       social_db_post_block_height: latest_snapshot.social_db_post_block_height,
@@ -270,7 +273,7 @@ async function indexProposalsOp(
         block_height: blockHeight,
         ts: blockTimestamp,
         editor_id: author,
-        timeline: args.timeline, // TimelineStatus
+        timeline: JSON.stringify(args.timeline), // TimelineStatus
         views: latest_proposal_snapshot.views + 1,
       };
       await createProposalSnapshot(context, proposal_snapshot);
@@ -297,7 +300,6 @@ async function indexProposalsOp(
         block_height: blockHeight,
         ts: blockTimestamp,
         editor_id: author,
-        timeline: args.timeline, // TimelineStatus
         views: latest_proposal_snapshot.views + 1,
       };
       await createProposalSnapshot(context, proposal_snapshot);
@@ -355,6 +357,7 @@ async function indexRFPsOp(
 
     await createrfpSnapshot(context, {
       ...args.rfp.snapshot,
+      timeline: JSON.stringify(args.rfp.snapshot.timeline),
       rfp_id,
       linked_proposals: [],
       block_height: blockHeight,
@@ -371,6 +374,7 @@ async function indexRFPsOp(
     let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
     let rfp_snapshot = {
       ...args.body,
+      timeline: JSON.stringify(args.body.timeline),
       rfp_id,
       block_height: blockHeight,
       social_db_post_block_height: latest_snapshot.social_db_post_block_height,
@@ -402,7 +406,7 @@ async function indexRFPsOp(
           block_height: blockHeight,
           ts: blockTimestamp,
           editor_id: author,
-          timeline: args.timeline, // TimelineStatus
+          timeline: JSON.stringify(args.timeline), // TimelineStatus
           views: latest_rfp_snapshot.views + 1,
         };
         await createrfpSnapshot(context, rfp_snapshot);
@@ -639,7 +643,7 @@ async function createProposalSnapshot(
     receiver_account, // AccountId
     supervisor, // Option<AccountId>
     views,
-    timeline: JSON.stringify(timeline), // TimelineStatus
+    timeline: timeline, // TimelineStatus
   };
   try {
     console.log("Creating a ProposalSnapshot");
@@ -841,7 +845,7 @@ async function createrfpSnapshot(
     summary,
     description,
     views,
-    timeline: JSON.stringify(timeline), // TimelineStatus
+    timeline: timeline, // TimelineStatus
     submission_deadline,
   };
   try {
