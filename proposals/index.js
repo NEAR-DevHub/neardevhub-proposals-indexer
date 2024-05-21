@@ -210,8 +210,7 @@ async function indexProposalsOp(
   if (method_name === "edit_proposal") {
     let linked_rfp = args.body.linked_rfp;
 
-    let result = await queryLatestProposalSnapshot(proposal_id);
-    let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
+    let latest_snapshot = await queryLatestProposalSnapshot(proposal_id, blockTimestamp);
     let labels = (linked_rfp === undefined || linked_rfp === null) ? args.labels : latest_snapshot.labels;
 
     let proposal_snapshot = {
@@ -234,8 +233,7 @@ async function indexProposalsOp(
   if (method_name === "edit_proposal_internal") {
     let linked_rfp = args.body.linked_rfp;
 
-    let result = await queryLatestProposalSnapshot(proposal_id);
-    let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
+    let latest_snapshot = await queryLatestProposalSnapshot(proposal_id, blockTimestamp);
     let labels = (linked_rfp === undefined || linked_rfp === null) ? args.labels : latest_snapshot.labels;
 
     let proposal_snapshot = {
@@ -325,8 +323,7 @@ async function indexRFPsOp(
 
   if (method_name === "edit_rfp") {
     let labels = args.labels;
-    let result = await queryLatestRFPSnapshot(rfp_id);
-    let latest_snapshot = result.polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
+    let latest_snapshot = await queryLatestRFPSnapshot(rfp_id, blockTimestamp);
     let rfp_snapshot = {
       ...args.body,
       timeline: JSON.stringify(args.body.timeline),
@@ -346,11 +343,8 @@ async function indexRFPsOp(
 
   if (method_name === "edit_rfp_timeline") {
     try {
-      let result = await queryLatestRFPSnapshot(rfp_id);
-      if (Object.keys(result).length !== 0) {
-        let latest_rfp_snapshot =
-          result
-            .polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
+      let latest_rfp_snapshot = await queryLatestRFPSnapshot(rfp_id, blockTimestamp);
+      if (latest_rfp_snapshot) {
         let rfp_snapshot = {
           ...latest_rfp_snapshot,
           rfp_id,
@@ -362,7 +356,7 @@ async function indexRFPsOp(
         };
         await createrfpSnapshot(context, rfp_snapshot);
       } else {
-        console.log("Empty object latest_rfp_snapshot result", { result });
+        console.log("Empty object latest_rfp_snapshot result", { latest_rfp_snapshot });
       }
     } catch (error) {
       console.error("Error editing rfp timeline:", error);
@@ -373,12 +367,8 @@ async function indexRFPsOp(
       let proposals_to_cancel = args.proposals_to_cancel;
       let proposals_to_unlink = args.proposals_to_unlink;
 
-      let result = await queryLatestRFPSnapshot(rfp_id);
-      if (Object.keys(result).length !== 0) {
-        let latest_rfp_snapshot =
-          result
-            .polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
-
+      let latest_rfp_snapshot = await queryLatestRFPSnapshot(rfp_id, blockTimestamp);
+      if (latest_rfp_snapshot) {
         let linked_proposals = latest_rfp_snapshot.linked_proposals;
         for (let proposal_id of proposals_to_unlink) {
           linked_proposals = removeFromLinkedProposals(linked_proposals, proposal_id);
@@ -401,7 +391,7 @@ async function indexRFPsOp(
         };
         await createrfpSnapshot(context, rfp_snapshot);
       } else {
-        console.log("Empty object latest_rfp_snapshot result", { result });
+        console.log("Empty object latest_rfp_snapshot result", { latest_rfp_snapshot });
       }
     } catch (error) {
       console.error("Error editing rfp timeline:", error);
@@ -423,13 +413,8 @@ function removeFromLinkedProposals(linked_proposals, proposal_id) {
 }
 
 async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, blockTimestamp, modifyCallback) {
-  let result = await queryLatestRFPSnapshot(rfp_id);
-
-  if (Object.keys(result).length !== 0) {
-    let latest_rfp_snapshot =
-      result
-        .polyprogrammist_near_devhub_objects_s_rfp_snapshots[0];
-
+  let latest_rfp_snapshot = await queryLatestRFPSnapshot(rfp_id, blockTimestamp);
+  if (latest_rfp_snapshot) {
     let linked_proposals = modifyCallback(latest_rfp_snapshot.linked_proposals, proposal_id);
     let rfp_snapshot = {
       ...latest_rfp_snapshot,
@@ -440,7 +425,7 @@ async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, bl
     };
     await createrfpSnapshot(context, rfp_snapshot);
   } else {
-    console.log("Empty object latest_rfp_snapshot result", { result });
+    console.log("Empty object latest_rfp_snapshot result", { latest_rfp_snapshot });
   }
 }
 
@@ -454,13 +439,12 @@ async function removeLinkedProposalFromSnapshot(rfp_id, proposal_id, blockHeight
 
 async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockHeight, blockTimestamp) {
   try {
-    let latest_linked_rfp = await queryLatestLinkedRFP(proposal_id, blockTimestamp);
-    let last_snapshot = latest_linked_rfp.polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
+    let last_snapshot = await queryLatestProposalSnapshot(proposal_id, blockTimestamp);
     let latest_linked_rfp_id = undefined;
     if (last_snapshot != undefined) {
       latest_linked_rfp_id = last_snapshot.linked_rfp;
     }
-
+    
     if (new_linked_rfp !== latest_linked_rfp_id) {
       if (new_linked_rfp !== undefined && new_linked_rfp !== null) {
         console.log(`Adding linked_rfp ${new_linked_rfp} to proposal ${proposal_id}`)
@@ -479,13 +463,10 @@ async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockH
 }
 
 async function editProposalLinkedRFP(context, proposal_id, new_rfp_id, author, blockHeight, blockTimestamp, updateRfpSnapshot) {
-    let result = await queryLatestProposalSnapshot(proposal_id);
+    let latest_proposal_snapshot = await queryLatestProposalSnapshot(proposal_id, blockTimestamp);
 
-    if (Object.keys(result).length !== 0) {
+    if (latest_proposal_snapshot) {
       let linked_rfp = new_rfp_id;
-      let latest_proposal_snapshot =
-        result
-          .polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
       let proposal_snapshot = {
         ...latest_proposal_snapshot,
         proposal_id,
@@ -503,12 +484,9 @@ async function editProposalLinkedRFP(context, proposal_id, new_rfp_id, author, b
 }
 
 async function editProposalTimeline(context, proposal_id, author, blockHeight, blockTimestamp, timeline) {
-  let result = await queryLatestProposalSnapshot(proposal_id);
+  let latest_proposal_snapshot = await queryLatestProposalSnapshot(proposal_id, blockTimestamp);
 
-    if (Object.keys(result).length !== 0) {
-      let latest_proposal_snapshot =
-        result
-          .polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
+    if (latest_proposal_snapshot) {
       let proposal_snapshot = {
         ...latest_proposal_snapshot,
         proposal_id,
@@ -520,7 +498,7 @@ async function editProposalTimeline(context, proposal_id, author, blockHeight, b
       };
       await createProposalSnapshot(context, proposal_snapshot);
     } else {
-      console.log("Empty object latest_proposal_snapshot result", { result });
+      console.log("Empty object latest_proposal_snapshot result", { latest_proposal_snapshot });
     }
 }
 
@@ -536,11 +514,8 @@ async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals, bl
 
     if (!eqSet(new Set(old_labels), new Set(new_labels))) {
       for (let proposal_id of linked_proposals) {
-        let result = await queryLatestProposalSnapshot(proposal_id);
-        if (Object.keys(result).length !== 0) {
-          let latest_proposal_snapshot =
-            result
-              .polyprogrammist_near_devhub_objects_s_proposal_snapshots[0];
+        let latest_proposal_snapshot = await queryLatestProposalSnapshot(proposal_id, blockTimestamp);
+        if (latest_proposal_snapshot) {
           let proposal_snapshot = {
             ...latest_proposal_snapshot,
             labels: new_labels,
@@ -549,7 +524,7 @@ async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals, bl
           };
           await createProposalSnapshot(context, proposal_snapshot);
         } else {
-          console.log("Empty object latest_proposal_snapshot result", { result });
+          console.log("Empty object latest_proposal_snapshot result", { latest_proposal_snapshot });
         }
       }
     }
@@ -581,22 +556,7 @@ async function createDump(
   };
   try {
     console.log("Creating a dump...");
-
-    const mutationData = {
-      dump,
-    };
-    await context.graphql(
-      `
-        mutation CreateDump($dump: polyprogrammist_near_devhub_objects_s_dumps_insert_input!) {
-          insert_polyprogrammist_near_devhub_objects_s_dumps_one(
-            object: $dump
-          ) {
-            receipt_id
-          }
-        }
-      `,
-      mutationData
-    );
+    await context.db.Dumps.insert(dump);
     console.log(
       `Dump ${author} ${method_name} proposal ${proposal_id} has been added to the database`
     );
@@ -613,17 +573,7 @@ async function createProposal(context, { id, author_id }) {
   const proposal = { id, author_id };
   try {
     console.log("Creating a Proposal");
-    const mutationData = {
-      proposal,
-    };
-    await context.graphql(
-      `
-      mutation CreateProposal($proposal: polyprogrammist_near_devhub_objects_s_proposals_insert_input!) {
-        insert_polyprogrammist_near_devhub_objects_s_proposals_one(object: $proposal) {id}
-      }
-      `,
-      mutationData
-    );
+    await context.db.Proposals.insert(proposal);
     console.log(`Proposal ${id} has been added to the database`);
     return null;
   } catch (e) {
@@ -665,13 +615,13 @@ async function createProposalSnapshot(
     block_height,
     ts,
     editor_id,
-    labels,
+    labels: JSON.stringify(labels),
     proposal_body_version,
     name,
     category,
     summary,
     description,
-    linked_proposals: linked_proposals,
+    linked_proposals: JSON.stringify(linked_proposals),
     linked_rfp, // Option<RFPId>
     requested_sponsorship_usd_amount, // u32
     requested_sponsorship_paid_in_currency, // ProposalFundingCurrency
@@ -679,21 +629,11 @@ async function createProposalSnapshot(
     receiver_account, // AccountId
     supervisor, // Option<AccountId>
     views,
-    timeline: timeline, // TimelineStatus
+    timeline: JSON.stringify(timeline), // TimelineStatus
   };
   try {
     console.log("Creating a ProposalSnapshot");
-    const mutationData = {
-      proposal_snapshot,
-    };
-    await context.graphql(
-      `
-      mutation CreateProposalSnapshot($proposal_snapshot: polyprogrammist_near_devhub_objects_s_proposal_snapshots_insert_input!) {
-        insert_polyprogrammist_near_devhub_objects_s_proposal_snapshots_one(object: $proposal_snapshot) {proposal_id, block_height}
-      }
-      `,
-      mutationData
-    );
+    await context.db.ProposalSnapshots.insert(proposal_snapshot);
     console.log(
       `Proposal Snapshot with proposal_id ${proposal_id} at block_height ${block_height} has been added to the database`
     );
@@ -706,69 +646,25 @@ async function createProposalSnapshot(
   }
 }
 
-const queryLatestProposalSnapshot = async (proposal_id) => {
-  const queryData = {
-    proposal_id,
-  };
-  try {
-    const result = await context.graphql(
-      `
-      query GetLatestSnapshot($proposal_id: Int!) {
-        polyprogrammist_near_devhub_objects_s_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}}, order_by: {ts: desc}, limit: 1) {
-          proposal_id
-          block_height
-          proposal_version
-          ts
-          editor_id
-          social_db_post_block_height
-          labels
-          proposal_body_version
-          name
-          category
-          summary
-          description
-          linked_proposals
-          linked_rfp
-          requested_sponsorship_usd_amount
-          requested_sponsorship_paid_in_currency
-          requested_sponsor
-          receiver_account
-          supervisor
-          timeline
-          views
-        }
-      }
-      `,
-      queryData
-    );
-    console.log({ result });
-    return result;
-  } catch (e) {
-    console.log("Error retrieving latest Proposal snapshot:", e);
+function getLatestObject(array, blockTimestamp) {
+  if (array == null || array.length === 0) {
     return null;
   }
-};
+  console.log(array.length);
+  let result = array.reduce((prev, current) => (prev.ts > current.ts && prev.ts < blockTimestamp || current.ts >= blockTimestamp) ? prev : current);
+  if (result == null || result.ts >= blockTimestamp) {
+    return null;
+  }
+  return result;
+}
 
-const queryLatestProposalViews = async (proposal_id) => {
-  const queryData = {
-    proposal_id,
-  };
+const queryLatestProposalSnapshot = async (proposal_id, blockTimestamp) => {
   try {
-    const result = await context.graphql(
-      `
-      query GetLatestSnapshot($proposal_id: Int!) {
-        polyprogrammist_near_devhub_objects_s_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}}, order_by: {ts: desc}, limit: 1) {
-          proposal_id
-          views
-        }
-      }
-      `,
-      queryData
-    );
-    console.log({ result });
-    return result;
+    let snapshots = await context.db.ProposalSnapshots.select({proposal_id: proposal_id}, limit = null);
+    let latest_snapshot = getLatestObject(snapshots, blockTimestamp);
+    return latest_snapshot;
   } catch (e) {
-    console.log("Error retrieving latest  Proposal snapshot for views:", e);
+    console.log("Error retrieving latest Proposal snapshot:", e);
     return null;
   }
 };
@@ -796,22 +692,7 @@ async function createRFPDump(
   };
   try {
     console.log("Creating a dump...");
-
-    const mutationData = {
-      dump,
-    };
-    await context.graphql(
-      `
-        mutation CreateDump($dump: polyprogrammist_near_devhub_objects_s_rfp_dumps_insert_input!) {
-          insert_polyprogrammist_near_devhub_objects_s_rfp_dumps_one(
-            object: $dump
-          ) {
-            receipt_id
-          }
-        }
-      `,
-      mutationData
-    );
+    context.db.RfpDumps.insert(dump);
     console.log(
       `Dump ${author} ${method_name} rfp ${rfp_id} has been added to the database`
     );
@@ -828,17 +709,7 @@ async function createRFP(context, { id, author_id }) {
   const rfp = { id, author_id };
   try {
     console.log("Creating a rfp");
-    const mutationData = {
-      rfp,
-    };
-    await context.graphql(
-      `
-      mutation Createrfp($rfp: polyprogrammist_near_devhub_objects_s_rfps_insert_input!) {
-        insert_polyprogrammist_near_devhub_objects_s_rfps_one(object: $rfp) {id}
-      }
-      `,
-      mutationData
-    );
+    await context.db.Rfps.insert(rfp);
     console.log(`rfp ${id} has been added to the database`);
     return null;
   } catch (e) {
@@ -874,29 +745,19 @@ async function createrfpSnapshot(
     rfp_version,
     ts,
     editor_id,
-    labels,
-    linked_proposals,
+    labels: JSON.stringify(labels),
+    linked_proposals: JSON.stringify(linked_proposals),
     rfp_body_version,
     name,
     summary,
     description,
     views,
-    timeline: timeline, // TimelineStatus
+    timeline: JSON.stringify(timeline), // TimelineStatus
     submission_deadline,
   };
   try {
     console.log("Creating a rfpSnapshot");
-    const mutationData = {
-      rfp_snapshot,
-    };
-    await context.graphql(
-      `
-      mutation CreaterfpSnapshot($rfp_snapshot: polyprogrammist_near_devhub_objects_s_rfp_snapshots_insert_input!) {
-        insert_polyprogrammist_near_devhub_objects_s_rfp_snapshots_one(object: $rfp_snapshot) {rfp_id, block_height}
-      }
-      `,
-      mutationData
-    );
+    await context.db.RfpSnapshots.insert(rfp_snapshot);
     console.log(
       `rfp Snapshot with rfp_id ${rfp_id} at block_height ${block_height} has been added to the database`
     );
@@ -909,89 +770,13 @@ async function createrfpSnapshot(
   }
 }
 
-const queryLatestLinkedRFP = async (proposal_id, blockTimestamp) => {
-  const queryData = {
-    proposal_id,
-    timestamp: blockTimestamp,
-  };
+const queryLatestRFPSnapshot = async (rfp_id, blockTimestamp) => {
   try {
-    const result = await context.graphql(
-      `
-      query GetLatestLinkedRFP($proposal_id: Int!, $timestamp: numeric!) {
-        polyprogrammist_near_devhub_objects_s_proposal_snapshots(where: {proposal_id: {_eq: $proposal_id}, ts: {_lt: $timestamp}}, order_by: {ts: desc}, limit: 1) {
-          proposal_id
-          linked_rfp
-        }
-      }
-      `,
-      queryData
-    );
-    console.log({ result });
-    return result;
-  } catch (e) {
-    console.log("Error retrieving latest linked RFP:", e);
-    return null;
-  }
-}
-
-const queryLatestRFPSnapshot = async (rfp_id) => {
-  const queryData = {
-    rfp_id,
-  };
-  try {
-    const result = await context.graphql(
-      `
-      query GetLatestSnapshot($rfp_id: Int!) {
-        polyprogrammist_near_devhub_objects_s_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
-          rfp_id
-          block_height
-          rfp_version
-          ts
-          editor_id
-          social_db_post_block_height
-          labels
-          linked_proposals
-          rfp_body_version
-          name
-          summary
-          description
-          timeline
-          submission_deadline
-          views
-        }
-      }
-      `,
-      queryData
-    );
-    console.log({ result });
-    return result;
+    let snapshots = await context.db.RfpSnapshots.select({rfp_id: rfp_id}, limit = null);
+    let latest_snapshot = getLatestObject(snapshots, blockTimestamp);
+    return latest_snapshot;
   } catch (e) {
     console.log("Error retrieving latest RFP snapshot:", e);
-    return null;
-  }
-};
-
-const  queryLatestRFPViews = async (rfp_id) => {
-  const queryData = {
-    rfp_id,
-  };
-  try {
-    const result = await context.graphql(
-      `
-      query GetLatestSnapshot($rfp_id: Int!) {
-        polyprogrammist_near_devhub_objects_s_rfp_snapshots(where: {rfp_id: {_eq: $rfp_id}}, order_by: {ts: desc}, limit: 1) {
-          rfp_id
-          linked_proposals
-          views
-        }
-      }
-      `,
-      queryData
-    );
-    console.log({ result });
-    return result;
-  } catch (e) {
-    console.log("Error retrieving latest RFP snapshot for views:", e);
     return null;
   }
 };
