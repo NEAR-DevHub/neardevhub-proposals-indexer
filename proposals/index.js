@@ -45,7 +45,7 @@ function getAddOrEditObject(block, startsWith) {
     .flatMap((e) => e.stateChanges)
     .filter(
       (stateChange) =>
-        stateChange.change.accountId === "truedove38.near" &&
+        stateChange.change.accountId === "devhub.near" &&
         stateChange.type === "data_update"
     );
 
@@ -104,7 +104,7 @@ function base64toHex(encodedValue) {
 function getDevHubOps(block, methodNames, callbackNames) {
   return block
     .actions()
-    .filter((action) => action.receiverId === "truedove38.near")
+    .filter((action) => action.receiverId === "devhub.near")
     .flatMap((action) =>
       action.operations
         .filter((operation) => operation["FunctionCall"])
@@ -119,7 +119,7 @@ function getDevHubOps(block, methodNames, callbackNames) {
         .filter(
           (operation) =>
             methodNames.includes(operation.methodName) ||
-            (callbackNames.includes(operation.methodName) && operation.caller === "truedove38.near")
+            (callbackNames.includes(operation.methodName) && operation.caller === "devhub.near")
         )
         .map((functionCallOperation) => ({
           ...functionCallOperation,
@@ -650,7 +650,6 @@ function getLatestObject(array, blockTimestamp) {
   if (array == null || array.length === 0) {
     return null;
   }
-  console.log(array.length);
   let result = array.reduce((prev, current) => (prev.ts > current.ts && prev.ts < blockTimestamp || current.ts >= blockTimestamp) ? prev : current);
   if (result == null || result.ts >= blockTimestamp) {
     return null;
