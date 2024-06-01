@@ -67,15 +67,34 @@ function getAddOrEditObject(block, startsWith) {
 function buildAuthorToRFPIdMap(block) {
   return Object.fromEntries(
     getAddOrEditObject(block, "11").map((kv) => {
+      let prefix_len = 1;
+      let id_len = 4;
+      let author_id_size_len = 4;
+      let author_id_string_len = kv.v.slice(
+        prefix_len + id_len, 
+        prefix_len + id_len + author_id_size_len
+      ).readUInt32LE();
+      let social_db_post_block_height_len = 8;
+      let before_editor_id = prefix_len + id_len + author_id_size_len + 
+        author_id_string_len + social_db_post_block_height_len;
+      let editor_id_size_len = 4;
+      let editor_id_string_len = kv.v.slice(
+        before_editor_id, before_editor_id + editor_id_size_len
+      ).readUInt32LE();
+      let editor_id_string = kv.v.slice(
+        before_editor_id + editor_id_size_len, 
+        before_editor_id + editor_id_size_len + editor_id_string_len
+      ).toString("utf-8")
+
       return [
-        // Here we read enum VersionedRFP. So we skip enum byte. This enum has just one variant RFP. 
-        // It contains id: u32 (4 bytes) and then account_id which is string. 
+        // Here we read enum VersionedRFP. So we skip enum byte. This enum has just one variant RFP.
+        // It contains id: u32 (4 bytes) and then account_id which is string.
         // String is serialized as length: u32 (4 bytes) and then content of the string
-        kv.v.slice(9, 9 + kv.v.slice(5, 9).readUInt32LE()).toString("utf-8"),
-        // In Vector, key is prefix + index, where index is u32 in little-endian format. 
+        editor_id_string,
+        // In Vector, key is prefix + index, where index is u32 in little-endian format.
         // So we skip prefix with slice(1) and read index with readBigUint64LE().
-        Number(kv.k.slice(1).readBigUInt64LE())
-      ]
+        Number(kv.k.slice(1).readBigUInt64LE()),
+      ];
     })
   );
 }
@@ -83,8 +102,32 @@ function buildAuthorToRFPIdMap(block) {
 function buildAuthorToProposalIdMap(block) {
   return Object.fromEntries(
     getAddOrEditObject(block, "0e").map((kv) => {
+      let prefix_len = 1;
+      let id_len = 4;
+      let author_id_size_len = 4;
+      let author_id_string_len = kv.v.slice(
+        prefix_len + id_len, 
+        prefix_len + id_len + author_id_size_len
+      ).readUInt32LE();
+      let social_db_post_block_height_len = 8;
+      let before_editor_id = prefix_len + id_len + author_id_size_len + 
+        author_id_string_len + social_db_post_block_height_len;
+      let editor_id_size_len = 4;
+      let editor_id_string_len = kv.v.slice(
+        before_editor_id, before_editor_id + editor_id_size_len
+      ).readUInt32LE();
+      let editor_id_string = kv.v.slice(
+        before_editor_id + editor_id_size_len, 
+        before_editor_id + editor_id_size_len + editor_id_string_len
+      ).toString("utf-8")
+
       return [
-        kv.v.slice(9, 9 + kv.v.slice(5, 9).readUInt32LE()).toString("utf-8"),
+        // Here we read enum VersionedRFP. So we skip enum byte. This enum has just one variant RFP.
+        // It contains id: u32 (4 bytes) and then account_id which is string.
+        // String is serialized as length: u32 (4 bytes) and then content of the string
+        editor_id_string,
+        // In Vector, key is prefix + index, where index is u32 in little-endian format.
+        // So we skip prefix with slice(1) and read index with readBigUint64LE().
         Number(kv.k.slice(1).readBigUInt64LE()),
       ];
     })
