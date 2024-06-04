@@ -247,7 +247,7 @@ async function indexProposalsOp(
       linked_proposals,
     }
     await createProposalSnapshot(context, proposal_snapshot);
-    await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
+    await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp, author);
   }
 
   if (method_name === "edit_proposal") {
@@ -270,7 +270,7 @@ async function indexProposalsOp(
       views: latest_snapshot.views + 1,
     };
     await createProposalSnapshot(context, proposal_snapshot);
-    await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
+    await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp, author);
   }
 
   if (method_name === "edit_proposal_internal") {
@@ -293,7 +293,7 @@ async function indexProposalsOp(
       views: latest_snapshot.views + 1,
     };
     await createProposalSnapshot(context, proposal_snapshot);
-    await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
+    await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp, author);
   }
 
   if (method_name === "edit_proposal_timeline") {
@@ -381,7 +381,7 @@ async function indexRFPsOp(
       views:latest_snapshot.views + 1,
     };
     await createrfpSnapshot(context, rfp_snapshot);
-    await checkAndUpdateLabels(latest_snapshot.labels, labels, latest_snapshot.linked_proposals, blockHeight, blockTimestamp);
+    await checkAndUpdateLabels(latest_snapshot.labels, labels, latest_snapshot.linked_proposals, blockHeight, blockTimestamp, author);
   }
 
   if (method_name === "edit_rfp_timeline") {
@@ -455,7 +455,7 @@ function removeFromLinkedProposals(linked_proposals, proposal_id) {
   return linked_proposals.filter((id) => id !== proposal_id);
 }
 
-async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, blockTimestamp, modifyCallback) {
+async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, blockTimestamp, modifyCallback, editor_id) {
   let latest_rfp_snapshot = await queryLatestRFPSnapshot(rfp_id, blockTimestamp);
   if (latest_rfp_snapshot) {
     let linked_proposals = modifyCallback(latest_rfp_snapshot.linked_proposals, proposal_id);
@@ -465,6 +465,7 @@ async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, bl
       linked_proposals: linked_proposals,
       block_height: blockHeight,
       ts: blockTimestamp,
+      editor_id: editor_id,
     };
     await createrfpSnapshot(context, rfp_snapshot);
   } else {
@@ -472,15 +473,15 @@ async function modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, bl
   }
 }
 
-async function addLinkedProposalToSnapshot(rfp_id, new_linked_proposal, blockHeight, blockTimestamp) {
-  await modifySnapshotLinkedProposal(rfp_id, new_linked_proposal, blockHeight, blockTimestamp, addToLinkedProposals);
+async function addLinkedProposalToSnapshot(rfp_id, new_linked_proposal, blockHeight, blockTimestamp, editor_id) {
+  await modifySnapshotLinkedProposal(rfp_id, new_linked_proposal, blockHeight, blockTimestamp, addToLinkedProposals, editor_id);
 }
 
-async function removeLinkedProposalFromSnapshot(rfp_id, proposal_id, blockHeight, blockTimestamp) {
-  await modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, blockTimestamp, removeFromLinkedProposals);
+async function removeLinkedProposalFromSnapshot(rfp_id, proposal_id, blockHeight, blockTimestamp, editor_id) {
+  await modifySnapshotLinkedProposal(rfp_id, proposal_id, blockHeight, blockTimestamp, removeFromLinkedProposals, editor_id);
 }
 
-async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockHeight, blockTimestamp) {
+async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockHeight, blockTimestamp, editor_id) {
   try {
     let last_snapshot = await queryLatestProposalSnapshot(proposal_id, blockTimestamp);
     let latest_linked_rfp_id = undefined;
@@ -491,12 +492,12 @@ async function checkAndUpdateLinkedProposals(proposal_id, new_linked_rfp, blockH
     if (new_linked_rfp !== latest_linked_rfp_id) {
       if (new_linked_rfp !== undefined && new_linked_rfp !== null) {
         console.log(`Adding linked_rfp ${new_linked_rfp} to proposal ${proposal_id}`)
-        await addLinkedProposalToSnapshot(new_linked_rfp, proposal_id, blockHeight, blockTimestamp);
+        await addLinkedProposalToSnapshot(new_linked_rfp, proposal_id, blockHeight, blockTimestamp, editor_id);
         console.log(`Proposal added to new RFP snapshot`)
       }
       if (latest_linked_rfp_id !== undefined && latest_linked_rfp_id !== null) {
         console.log(`Removing linked_rfp ${latest_linked_rfp_id} from proposal ${proposal_id}`)
-        await removeLinkedProposalFromSnapshot(latest_linked_rfp_id, proposal_id, blockHeight, blockTimestamp);
+        await removeLinkedProposalFromSnapshot(latest_linked_rfp_id, proposal_id, blockHeight, blockTimestamp, editor_id);
         console.log(`Proposal removed from old RFP snapshot`)
       }
     }
@@ -521,7 +522,7 @@ async function editProposalLinkedRFP(context, proposal_id, new_rfp_id, author, b
       };
       await createProposalSnapshot(context, proposal_snapshot);
       if (updateRfpSnapshot) {
-        await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp);
+        await checkAndUpdateLinkedProposals(proposal_id, linked_rfp, blockHeight, blockTimestamp, author);
       }
     }
 }
@@ -545,7 +546,7 @@ async function editProposalTimeline(context, proposal_id, author, blockHeight, b
     }
 }
 
-async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals, blockHeight, blockTimestamp) {
+async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals, blockHeight, blockTimestamp, editor_id) {
   try {
     const eqSet = (xs, ys) =>
       xs.size === ys.size &&
@@ -564,6 +565,7 @@ async function checkAndUpdateLabels(old_labels, new_labels, linked_proposals, bl
             labels: new_labels,
             block_height: blockHeight,
             ts: blockTimestamp,
+            editor_id: editor_id,
           };
           await createProposalSnapshot(context, proposal_snapshot);
         } else {
