@@ -37,4 +37,4 @@ Read more about [query api](https://docs.near.org/bos/queryapi/intro)
 
 ## Event Committee
 
-On the event-committee side we tested on mainnet for while before wiping the contract state and redeploying/re-initializing the same contract. Which means you can start the indexer at a random block. We found that  block `118620288` is a good start to not index the test proposals and still index proposal 0.
+On the event-committee side we tested on mainnet for while before wiping the contract state and redeploying/re-initializing the same contract. Which means you can NOT start the indexer at a random block. We found that  block `118620288` is a good start to not index the test proposals and still index proposal 0.
