@@ -123,7 +123,7 @@ CREATE TABLE
 CREATE TABLE
   rfp_snapshots (
     -- due to how query api runs, an edit_rfp can be processed by the worker before corresponding add_rfp, so we can't enforce rfp_id as foreign key
-    rfp_id int REFERENCES rfps(id),
+    rfp_id int REFERENCES rfps (id),
     block_height bigint,
     ts decimal(20, 0),
     editor_id varchar,
@@ -195,7 +195,7 @@ SELECT
   ps.timeline,
   ps.views,
   ps.submission_deadline
-FROM 
+FROM
   rfps p
   INNER JOIN (
     SELECT
