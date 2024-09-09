@@ -1,5 +1,5 @@
 {
-  "name": "subql",
+  "name": "devhub-subql-test-thomas",
   "version": "0.0.1",
   "description": "This project indexes Devhub's proposals and rfps",
   "main": "dist/index.js",
@@ -25,6 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "@subql/common": "latest",
+    "@subql/common-near": "^4.1.0",
     "@subql/testing": "^2.2.1",
     "@subql/types-near": "latest",
     "assert": "^2.0.0"
