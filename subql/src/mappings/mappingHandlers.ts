@@ -1,38 +1,10 @@
-import { NearActionEntity, NearBlockEntity, NearTxEntity } from "../types";
+import { NearActionEntity, TestProposal } from "../types";
 import {
   NearTransaction,
-  NearBlock,
   NearAction,
   Transfer,
   FunctionCall,
 } from "@subql/types-near";
-
-export async function handleBlock(block: NearBlock): Promise<void> {
-  logger.info(`Handling block ${block.header.height}`);
-
-  const blockRecord = NearBlockEntity.create({
-    id: block.header.height.toString(),
-    hash: block.header.hash,
-    author: block.author,
-    timestamp: BigInt(block.header.timestamp),
-  });
-
-  await blockRecord.save();
-}
-
-export async function handleTransaction(
-  transaction: NearTransaction
-): Promise<void> {
-  logger.info(`Handling transaction at ${transaction.block_height}`);
-
-  const transactionRecord = NearTxEntity.create({
-    id: `${transaction.block_hash}-${transaction.result.id}`,
-    signer: transaction.signer_id,
-    receiver: transaction.receiver_id,
-  });
-
-  await transactionRecord.save();
-}
 
 export async function handleAction(
   action: NearAction<Transfer>
@@ -75,12 +47,50 @@ export async function handleAction(
 }
 
 
+interface NearActionExample<FunctionCallExample> {
+  id: number;
+  type: "FunctionCall";
+  action: FunctionCallExample;
+  transaction?: NearTransaction;
+  receipt?: NearTransactionReceipt;
+}
+
+interface NearTransactionReceipt {
+  id: number;
+  block_height: number;
+  receipt_id: string;
+  predecessor_id: string;
+  Action?: {
+      actions: NearAction[];
+      // gas_price: BN;
+      input_data_ids: string[];
+      output_data_receivers: {
+          data_id: string;
+          receiver_id: string;
+      }[];
+      signer_id: string;
+      signer_public_key: string;
+  };
+  Data?: {
+      data: string;
+      data_id: string;
+  };
+  receiver_id: string;
+}
+
+interface FunctionCallExample {
+  method_name: string;
+  // args: IArgs; // toJson()
+  // gas: BN;
+  // deposit: BN;
+}
+
 export async function handleActionFunctionCall(action: NearAction<FunctionCall>) {
   // An Action can belong to either a transaction or a receipt
   // To check which one, we can check if action.transaction is null
   // If it is null, then it belongs to a receipt
   if(!action.receipt){
-    return
+    return logger.info(`No receipt found for action ${action.id}`)
   }
 
   logger.info(
@@ -103,12 +113,21 @@ export async function handleActionFunctionCall(action: NearAction<FunctionCall>)
     ? action.transaction.receiver_id
     : action.receipt.receiver_id;
 
-  const actionRecord = NearActionEntity.create({
-    id: id,
-    sender: sender,
-    receiver: receiver,
-    amount: BigInt((action.action as Transfer).deposit.toString()),
-  });
+  // const actionRecord = NearActionEntity.create({
+  //   id: id,
+  //   sender: sender,
+  //   receiver: receiver,
+  //   amount: BigInt((action.action as Transfer).deposit.toString()),
+  // });
+  // await actionRecord.save();
 
-  await actionRecord.save();
+  logger.info(`FunctionCall: ${id}, Author: ${receiver}`);
+
+
+  await TestProposal.create({
+    id: id,
+    authorId: `${sender}`,
+    receiverId: `${receiver}`,
+  }).save();
+
 }

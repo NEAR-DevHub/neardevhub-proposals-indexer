@@ -17,3 +17,92 @@ type NearActionEntity @entity {
   receiver: String!
   amount: BigInt!
 }
+
+type TestProposal @entity {
+  id: ID!
+  authorId: String!
+  receiverId: String!
+}
+
+type Proposal @entity {
+  id: ID!
+  authorId: String!
+  snapshots: [ProposalSnapshot!]! @derivedFrom(field: "proposal")
+  latestSnapshot: ProposalSnapshot @derivedFrom(field: "proposal")
+}
+
+type ProposalSnapshot @entity {
+  id: ID!
+  proposal: Proposal!
+  blockHeight: BigInt!
+  timestamp: BigInt!
+  editorId: String
+  socialDbPostBlockHeight: BigInt
+  labels: [String!]
+  proposalVersion: String
+  proposalBodyVersion: String
+  name: String
+  category: String
+  summary: String
+  description: String
+  # TODO: commented out to test
+  # linkedProposals: [Proposal!] @derivedFrom(field: "id")
+  # TODO: commented out to test
+  # linkedRfp: Rfp @derivedFrom(field: "linkedProposals")
+  requestedSponsorshipUsdAmount: Float
+  requestedSponsorshipPaidInCurrency: String
+  requestedSponsor: String
+  receiverAccount: String
+  supervisor: String
+  timeline: String
+  views: Int
+}
+
+type Dump @entity {
+  id: ID!
+  methodName: String
+  blockHeight: BigInt!
+  blockTimestamp: BigInt!
+  args: String
+  author: String
+  # TODO: commented out to test
+  # proposal: Proposal
+  proposal: String
+}
+
+# type Rfp @entity {
+#   id: ID!
+#   authorId: String!
+#   snapshots: [RfpSnapshot!]! @derivedFrom(field: "rfp")
+#   latestSnapshot: RfpSnapshot
+# }
+
+# type RfpSnapshot @entity {
+#   id: ID!
+#   rfp: Rfp!
+#   blockHeight: BigInt!
+#   timestamp: BigInt!
+#   editorId: String
+#   socialDbPostBlockHeight: BigInt
+#   labels: [String!]
+#   linkedProposals: [Proposal!] @derivedFrom(field: "linkedRfp")
+#   rfpVersion: String
+#   rfpBodyVersion: String
+#   name: String
+#   category: String
+#   summary: String
+#   description: String
+#   timeline: String
+#   submissionDeadline: BigInt
+#   views: Int
+# }
+
+# type RfpDump @entity {
+#   id: ID!
+#   methodName: String
+#   blockHeight: BigInt!
+#   blockTimestamp: BigInt!
+#   args: String
+#   author: String
+#   rfp: Rfp
+# }

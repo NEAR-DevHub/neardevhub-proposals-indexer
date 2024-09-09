@@ -27,10 +27,6 @@ dataSources:
     mapping:
       file: ./dist/index.js
       handlers:
-        - handler: handleTransaction
-          kind: near/TransactionHandler
-          filter:
-            receiver: devhub.near
         - handler: handleActionFunctionCall
           kind: near/ActionHandler
           filter:
@@ -42,4 +38,28 @@ dataSources:
           filter:
             type: FunctionCall
             methodName: edit_proposal
+            receiver: devhub.near
+        - handler: handleActionFunctionCall
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: edit_proposal_internal
+            receiver: devhub.near
+        - handler: handleActionFunctionCall
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: edit_proposal_linked_rfp
+            receiver: devhub.near
+        - handler: handleActionFunctionCall
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: edit_proposal_timeline
+            receiver: devhub.near
+        - handler: handleActionFunctionCall
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: edit_proposal_versioned_timeline
             receiver: devhub.near

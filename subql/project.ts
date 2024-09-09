@@ -50,8 +50,8 @@ const project: NearProject = {
   },
   dataSources: [
     {
-      kind: NearDatasourceKind.Runtime, // We use ethereum runtime since NEAR Aurora is a layer-2 that is compatible
-      startBlock: 127235357, // You can set any start block you want here. This block was when the sweat_welcome.near address was created
+      kind: NearDatasourceKind.Runtime,
+      startBlock: 127235357, 
       mapping: {
         file: "./dist/index.js",
         handlers: [
