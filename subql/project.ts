@@ -55,50 +55,6 @@ const project: NearProject = {
       mapping: {
         file: "./dist/index.js",
         handlers: [
-          // {
-          //   handler: "handleBlock",
-          //   kind: NearHandlerKind.Block,
-          //   filter: {
-          //     // sender: "devhub.near",
-          //     // type: "Fu"
-          //     // receiver: "devhub.near",
-
-          //   },
-          // },
-          {
-            handler: "handleTransaction",
-            kind: NearHandlerKind.Transaction, // We use ethereum runtime since NEAR Aurora is a layer-2 that is compatible
-            filter: {
-              // sender: "devhub.near",
-              // methodName:"",
-              receiver: "devhub.near",
-            },
-          },
-          // {
-          //   handler: "handleAction",
-          //   kind: NearHandlerKind.Action,
-          //   filter: {
-          //     type: "FunctionCall",
-          //     methodName: "storage_deposit",
-          //     receiver: "token.sweat",
-          //     /*
-          //     Filter examples 
-          //  filter:
-          //     type: DeleteAccount
-          //     beneficiaryId: ""
-          //  filter:
-          //     type: AddKey
-          //     publicKey: ""
-          //     accessKey: ""
-          //  filter:
-          //     type: DeleteKey
-          //     publicKey: ""
-          //  filter:
-          //     type: Stake
-          //     publicKey: ""
-          //      */
-          //   },
-          // },
           {
             handler: "handleActionFunctionCall",
             kind: NearHandlerKind.Action,
@@ -116,7 +72,43 @@ const project: NearProject = {
               methodName: "edit_proposal",
               receiver: "devhub.near"
             },
-          }
+          },
+          {
+            handler: "handleActionFunctionCall",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "edit_proposal_internal",
+              receiver: "devhub.near"
+            },
+          },
+          {
+            handler: "handleActionFunctionCall",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "edit_proposal_linked_rfp",
+              receiver: "devhub.near"
+            },
+          },
+          {
+            handler: "handleActionFunctionCall",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "edit_proposal_timeline",
+              receiver: "devhub.near"
+            },
+          },
+          {
+            handler: "handleActionFunctionCall",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "edit_proposal_versioned_timeline",
+              receiver: "devhub.near"
+            },
+          },
         ],
       },
     },
