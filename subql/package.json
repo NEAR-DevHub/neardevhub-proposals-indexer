@@ -10,6 +10,7 @@
     "dev": "subql codegen && subql build && docker-compose pull && docker-compose up --remove-orphans",
     "prepack": "rm -rf dist && npm run build",
     "test": "jest",
+    "test:debug": "subql test",
     "build:develop": "NODE_ENV=develop subql codegen && NODE_ENV=develop subql build"
   },
   "homepage": "https://github.com/subquery/near-subql-starter",
@@ -23,12 +24,13 @@
   "license": "MIT",
   "dependencies": {
     "@subql/common": "latest",
+    "@subql/testing": "^2.2.1",
     "@subql/types-near": "latest",
     "assert": "^2.0.0"
   },
   "devDependencies": {
     "@subql/cli": "latest",
-    "typescript": "^5.2.2",
-    "dotenv": "latest"
+    "dotenv": "latest",
+    "typescript": "^5.2.2"
   }
 }
