@@ -1,0 +1,34 @@
+{
+  "name": "subql",
+  "version": "0.0.1",
+  "description": "This project indexes Devhub's proposals and rfps",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "subql codegen && subql build",
+    "codegen": "subql codegen",
+    "start:docker": "docker-compose pull && docker-compose up --remove-orphans",
+    "dev": "subql codegen && subql build && docker-compose pull && docker-compose up --remove-orphans",
+    "prepack": "rm -rf dist && npm run build",
+    "test": "jest",
+    "build:develop": "NODE_ENV=develop subql codegen && NODE_ENV=develop subql build"
+  },
+  "homepage": "https://github.com/subquery/near-subql-starter",
+  "repository": "github:subquery/near-subql-starter",
+  "files": [
+    "dist",
+    "schema.graphql",
+    "project.yaml"
+  ],
+  "author": "Devhub Team",
+  "license": "MIT",
+  "dependencies": {
+    "@subql/common": "latest",
+    "@subql/types-near": "latest",
+    "assert": "^2.0.0"
+  },
+  "devDependencies": {
+    "@subql/cli": "latest",
+    "typescript": "^5.2.2",
+    "dotenv": "latest"
+  }
+}

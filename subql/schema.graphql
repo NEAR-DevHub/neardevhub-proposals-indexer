@@ -1,0 +1,19 @@
+type NearBlockEntity @entity {
+  id: ID!
+  author: String!
+  hash: String!
+  timestamp: BigInt!
+}
+
+type NearTxEntity @entity {
+  id: ID!
+  signer: String!
+  receiver: String!
+}
+
+type NearActionEntity @entity {
+  id: ID!
+  sender: String!
+  receiver: String!
+  amount: BigInt!
+}
