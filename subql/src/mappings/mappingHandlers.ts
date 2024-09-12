@@ -7,45 +7,6 @@ import {
   NearBlock
 } from "@subql/types-near";
 
-export async function handleAction(
-  action: NearAction<Transfer>
-): Promise<void> {
-  // An Action can belong to either a transaction or a receipt
-  // To check which one, we can check if action.transaction is null
-  // If it is null, then it belongs to a receipt
-  if(!action.receipt){
-    return
-  }
-
-  logger.info(
-    `Handling action at ${
-      action.transaction
-        ? action.transaction.block_height
-        : action.receipt.block_height
-    }`
-  );
-
-  logger.info(`Action: ${action.type}`);
-
-  const id = action.transaction
-    ? `${action.transaction.block_height}-${action.transaction.result.id}-${action.id}`
-    : `${action.receipt.block_height}-${action.receipt.id}-${action.id}`;
-  const sender = action.transaction
-    ? action.transaction.signer_id
-    : action.receipt.predecessor_id;
-  const receiver = action.transaction
-    ? action.transaction.receiver_id
-    : action.receipt.receiver_id;
-
-  const actionRecord = NearActionEntity.create({
-    id: id,
-    sender: sender,
-    receiver: receiver,
-    amount: +((action.action as Transfer).deposit.toString()),
-  });
-
-  await actionRecord.save();
-}
 
 
 interface NearActionExample<FunctionCallExample> {
@@ -87,6 +48,24 @@ interface FunctionCallExample {
 }
 
 
+interface AddProposalArgs {
+  labels: any[];
+  body: {
+    proposal_body_version: string;
+    name: string;
+    description: string;
+    category: string;
+    summary: string;
+    linked_proposals: any[];
+    requested_sponsorship_usd_amount: string;
+    requested_sponsorship_paid_in_currency: string;
+    receiver_account: string;
+    supervisor: string;
+    requested_sponsor: string;
+    timeline: { status: string };
+  }
+  accepted_terms_and_conditions_version: number;
+}
 export async function handleAddProposal(action: NearAction<FunctionCall>) {
   logger.info(`Handling add proposal at ${action?.receipt?.block_height}`);
 
@@ -119,16 +98,19 @@ export async function handleAddProposal(action: NearAction<FunctionCall>) {
   logger.info(`Last 5 proposals: ${proposalIds.slice(-5).join(",")}`);
 
   logger.info(`Last Proposal ID: ${lastProposalId}`);
+  logger.info(`Last Proposal ID TYPE: ${typeof lastProposalId}`);
 
   logger.info(`Args: ${args}`);
-  
-  const argsJson = args.toJson();
+
+  const argsJson: AddProposalArgs = args.toJson();
   
   logger.info(`Args: ${JSON.stringify(argsJson)}`);
 
-  const authorId = argsJson.receiver_account;
+  const authorId = argsJson.body.receiver_account;
 
-  const proposalId = lastProposalId + 1;
+  const proposalId = (Number(lastProposalId) + 1).toString();
+  logger.info(`proposalId: ${proposalId}`);
+
 
   await Proposal.create({
     id: proposalId,
@@ -145,7 +127,7 @@ export async function handleAddProposal(action: NearAction<FunctionCall>) {
     editorId: authorId,
     socialDbPostBlockHeight: 0, // TODO edit_proposal
     labels: argsJson.labels,
-    proposalVersion: argsJson.proposal_body_version,
+    proposalVersion: argsJson.body.proposal_body_version,
     proposalBodyVersion: argsJson.body.proposal_body_version,
     name: argsJson.body.name,
     category: argsJson.body.category,
@@ -177,6 +159,32 @@ export async function handleAddProposal(action: NearAction<FunctionCall>) {
    */
 }
 
+interface NewProposal {
+  proposal: {
+    id: number;
+    author_id: string;
+    social_db_post_block_height: string;
+    snapshot: {
+      editor_id: string;
+      timestamp: string;
+      labels: any[];
+      proposal_body_version: string;
+      name: string;
+      category: string;
+      summary: string;
+      description: string;
+      linked_proposals: any[];
+      requested_sponsorship_usd_amount: string;
+      requested_sponsorship_paid_in_currency: string;
+      receiver_account: string;
+      requested_sponsor: string;
+      supervisor: string;
+      timeline: { status: string };
+    };
+    snapshot_history: any[];
+  };
+}
+
 // TODO: use this function instead of handleAddProposal
 export async function handleSetBlockHeightCallback(action: NearAction<FunctionCall>) {
   logger.info(`Handling set block height callback at ${action?.receipt?.block_height}`);
@@ -190,7 +198,7 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
   ? action.transaction.signer_id
   : action.receipt.predecessor_id;
 
-  const argsJson = args.toJson();
+  const argsJson: NewProposal = args.toJson();
 
   logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
   
@@ -233,16 +241,7 @@ export async function handleActionFunctionCall(action: NearAction<FunctionCall>)
     : action.receipt.receiver_id;
   let methodName = action.action.method_name;
 
-  // const actionRecord = NearActionEntity.create({
-  //   id: id,
-  //   sender: sender,
-  //   receiver: receiver,
-  //   amount: BigInt((action.action as Transfer).deposit.toString()),
-  // });
-  // await actionRecord.save();
-
   logger.info(`FunctionCall: ${id}, Author: ${receiver}`);
-
 
   await TestProposal.create({
     id: id,
