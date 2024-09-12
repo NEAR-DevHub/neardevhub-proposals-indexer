@@ -2,7 +2,7 @@ type NearBlockEntity @entity {
   id: ID!
   author: String!
   hash: String!
-  timestamp: BigInt!
+  timestamp: Int!
 }
 
 type NearTxEntity @entity {
@@ -15,54 +15,55 @@ type NearActionEntity @entity {
   id: ID!
   sender: String!
   receiver: String!
-  amount: BigInt!
+  amount: Int!
 }
 
 type TestProposal @entity {
   id: ID!
   authorId: String!
   receiverId: String!
+  methodName: String!
 }
 
 type Proposal @entity {
   id: ID!
   authorId: String!
   snapshots: [ProposalSnapshot!]! @derivedFrom(field: "proposal")
-  latestSnapshot: ProposalSnapshot @derivedFrom(field: "proposal")
+  # latestSnapshot: ProposalSnapshot @derivedFrom(field: "proposal")
 }
 
 type ProposalSnapshot @entity {
   id: ID!
   proposal: Proposal!
-  blockHeight: BigInt!
-  timestamp: BigInt!
+  blockHeight: Int!
+  # timestamp: Int!
   editorId: String
-  socialDbPostBlockHeight: BigInt
+  socialDbPostBlockHeight: Int!
   labels: [String!]
-  proposalVersion: String
-  proposalBodyVersion: String
-  name: String
-  category: String
-  summary: String
-  description: String
+  proposalVersion: String!
+  proposalBodyVersion: String!
+  name: String!
+  category: String!
+  summary: String!
+  description: String!
   # TODO: commented out to test
   # linkedProposals: [Proposal!] @derivedFrom(field: "id")
   # TODO: commented out to test
   # linkedRfp: Rfp @derivedFrom(field: "linkedProposals")
-  requestedSponsorshipUsdAmount: Float
-  requestedSponsorshipPaidInCurrency: String
-  requestedSponsor: String
-  receiverAccount: String
-  supervisor: String
-  timeline: String
-  views: Int
+  requestedSponsorshipUsdAmount: String!
+  requestedSponsorshipPaidInCurrency: String!
+  requestedSponsor: String!
+  receiverAccount: String!
+  supervisor: String!
+  timeline: String!
+  edits: Int!
 }
 
 type Dump @entity {
   id: ID!
   methodName: String
-  blockHeight: BigInt!
-  blockTimestamp: BigInt!
+  blockHeight: Int!
+  blockTimestamp: Int!
   args: String
   author: String
   # TODO: commented out to test
@@ -80,10 +81,10 @@ type Dump @entity {
 # type RfpSnapshot @entity {
 #   id: ID!
 #   rfp: Rfp!
-#   blockHeight: BigInt!
-#   timestamp: BigInt!
+#   blockHeight: Int!
+#   timestamp: Int!
 #   editorId: String
-#   socialDbPostBlockHeight: BigInt
+#   socialDbPostBlockHeight: Int
 #   labels: [String!]
 #   linkedProposals: [Proposal!] @derivedFrom(field: "linkedRfp")
 #   rfpVersion: String
@@ -93,15 +94,15 @@ type Dump @entity {
 #   summary: String
 #   description: String
 #   timeline: String
-#   submissionDeadline: BigInt
-#   views: Int
+#   submissionDeadline: Int
+#   edits: Int
 # }
 
 # type RfpDump @entity {
 #   id: ID!
 #   methodName: String
-#   blockHeight: BigInt!
-#   blockTimestamp: BigInt!
+#   blockHeight: Int!
+#   blockTimestamp: Int!
 #   args: String
 #   author: String
 #   rfp: Rfp

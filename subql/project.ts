@@ -51,16 +51,25 @@ const project: NearProject = {
   dataSources: [
     {
       kind: NearDatasourceKind.Runtime,
-      startBlock: 127235357, 
+      startBlock: 127684255, // maguila.near add_proposal minus 20 blocks
       mapping: {
         file: "./dist/index.js",
         handlers: [
           {
-            handler: "handleActionFunctionCall",
+            handler: "handleAddProposal",
             kind: NearHandlerKind.Action,
             filter: {
               type: "FunctionCall",
               methodName: "add_proposal",
+              receiver: "devhub.near"
+            },
+          },
+          {
+            handler: "handleSetBlockHeightCallback",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "set_block_height_callback",
               receiver: "devhub.near"
             },
           },

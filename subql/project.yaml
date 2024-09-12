@@ -23,11 +23,11 @@ network:
     - 81003306
 dataSources:
   - kind: near/Runtime
-    startBlock: 127235357
+    startBlock: 127684255
     mapping:
       file: ./dist/index.js
       handlers:
-        - handler: handleActionFunctionCall
+        - handler: handleAddProposal
           kind: near/ActionHandler
           filter:
             type: FunctionCall
