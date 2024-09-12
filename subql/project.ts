@@ -51,7 +51,7 @@ const project: NearProject = {
   dataSources: [
     {
       kind: NearDatasourceKind.Runtime,
-      startBlock: 127684255, // maguila.near add_proposal minus 20 blocks
+      startBlock: 127684275, // maguila.near add_proposal
       mapping: {
         file: "./dist/index.js",
         handlers: [
