@@ -56,15 +56,6 @@ const project: NearProject = {
         file: "./dist/index.js",
         handlers: [
           {
-            handler: "handleAddProposal",
-            kind: NearHandlerKind.Action,
-            filter: {
-              type: "FunctionCall",
-              methodName: "add_proposal",
-              receiver: "devhub.near"
-            },
-          },
-          {
             handler: "handleSetBlockHeightCallback",
             kind: NearHandlerKind.Action,
             filter: {

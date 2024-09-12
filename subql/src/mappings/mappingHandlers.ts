@@ -194,14 +194,38 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
   }
 
   let args = action.action.args;
-  let author = action.transaction
-  ? action.transaction.signer_id
-  : action.receipt.predecessor_id;
-
+ 
   const argsJson: NewProposal = args.toJson();
 
   logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
-  
+
+  await Proposal.create({
+    id: argsJson.proposal.id.toString(),
+    authorId: argsJson.proposal.author_id,
+  }).save();
+
+  await ProposalSnapshot.create({
+    id: argsJson.proposal.id.toString(),
+    proposalId: argsJson.proposal.id.toString(),
+    blockHeight: action?.receipt?.block_height,
+    editorId: argsJson.proposal.snapshot.editor_id,
+    socialDbPostBlockHeight: Number(argsJson.proposal.social_db_post_block_height),
+    labels: argsJson.proposal.snapshot.labels,
+    proposalVersion: argsJson.proposal.snapshot.proposal_body_version,
+    proposalBodyVersion: argsJson.proposal.snapshot.proposal_body_version,
+    name: argsJson.proposal.snapshot.name,
+    category: argsJson.proposal.snapshot.category,
+    summary: argsJson.proposal.snapshot.summary,
+    description: argsJson.proposal.snapshot.description,
+    requestedSponsorshipUsdAmount: argsJson.proposal.snapshot.requested_sponsorship_usd_amount,
+    requestedSponsorshipPaidInCurrency: argsJson.proposal.snapshot.requested_sponsorship_paid_in_currency,
+    requestedSponsor: argsJson.proposal.snapshot.requested_sponsor,
+    receiverAccount: argsJson.proposal.snapshot.receiver_account,
+    supervisor: argsJson.proposal.snapshot.supervisor,
+    timeline: JSON.stringify(argsJson.proposal.snapshot.timeline),
+    edits: 1,
+  }).save();
+
 }
 
 export async function handleEditProposal(action: NearAction<FunctionCall>) {

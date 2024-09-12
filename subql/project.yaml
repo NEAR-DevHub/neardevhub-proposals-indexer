@@ -23,16 +23,10 @@ network:
     - 81003306
 dataSources:
   - kind: near/Runtime
-    startBlock: 127684255
+    startBlock: 127684275
     mapping:
       file: ./dist/index.js
       handlers:
-        - handler: handleAddProposal
-          kind: near/ActionHandler
-          filter:
-            type: FunctionCall
-            methodName: add_proposal
-            receiver: devhub.near
         - handler: handleSetBlockHeightCallback
           kind: near/ActionHandler
           filter:

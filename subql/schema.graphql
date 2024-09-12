@@ -29,7 +29,7 @@ type Proposal @entity {
   id: ID!
   authorId: String!
   snapshots: [ProposalSnapshot!]! @derivedFrom(field: "proposal")
-  # latestSnapshot: ProposalSnapshot @derivedFrom(field: "proposal")
+  linkedProposals: [LinkedProposal!]! @derivedFrom(field: "proposal")
 }
 
 type ProposalSnapshot @entity {
@@ -46,8 +46,7 @@ type ProposalSnapshot @entity {
   category: String!
   summary: String!
   description: String!
-  # TODO: commented out to test
-  # linkedProposals: [Proposal!] @derivedFrom(field: "id")
+  linkedProposals: [LinkedProposal!]! @derivedFrom(field: "snapshot")
   # TODO: commented out to test
   # linkedRfp: Rfp @derivedFrom(field: "linkedProposals")
   requestedSponsorshipUsdAmount: String!
@@ -57,6 +56,12 @@ type ProposalSnapshot @entity {
   supervisor: String!
   timeline: String!
   edits: Int!
+}
+
+type LinkedProposal @entity {
+  id: ID!
+  proposal: Proposal!
+  snapshot: ProposalSnapshot!
 }
 
 type Dump @entity {
