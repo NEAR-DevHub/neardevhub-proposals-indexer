@@ -41,7 +41,7 @@ export async function handleAction(
     id: id,
     sender: sender,
     receiver: receiver,
-    amount: BigInt((action.action as Transfer).deposit.toString()),
+    amount: +((action.action as Transfer).deposit.toString()),
   });
 
   await actionRecord.save();

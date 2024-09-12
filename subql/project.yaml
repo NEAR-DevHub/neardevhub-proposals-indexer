@@ -33,6 +33,12 @@ dataSources:
             type: FunctionCall
             methodName: add_proposal
             receiver: devhub.near
+        - handler: handleSetBlockHeightCallback
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: set_block_height_callback
+            receiver: devhub.near
         - handler: handleActionFunctionCall
           kind: near/ActionHandler
           filter:
