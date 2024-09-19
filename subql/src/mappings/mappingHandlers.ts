@@ -62,10 +62,10 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
     return logger.info(`Skipping indexing of set block height callback at ${action.receipt.block_height} for events-committee.near`)
   }
 
-  let args = action.action.args;
+  const args = action.action.args;
   const argsJson: NewProposal = args.toJson();
 
-  logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
+  // logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
 
   const compositeId = `${action.receipt.receiver_id}_${argsJson.proposal.id.toString()}`;
 
@@ -77,13 +77,10 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
     instance: action.receipt.receiver_id,
   }).save();
 
-  let socialDbPostBlockHeight = argsJson.proposal.social_db_post_block_height;
+  const socialDbPostBlockHeight = argsJson.proposal.social_db_post_block_height;
+  const supervisor = argsJson.proposal.snapshot.supervisor ?? "";
 
-  logger.info(`Social DB Post Block Height: ${socialDbPostBlockHeight} and type ${typeof socialDbPostBlockHeight}`);
-
-  let supervisor = argsJson.proposal.snapshot.supervisor ?? "";
-
-  let proposalSnapshot = {
+  const proposalSnapshot = {
     // NOTE the first snapshot has the same id as the proposal
     id: compositeId,
     proposalId: compositeId,
@@ -105,9 +102,8 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
     timeline: JSON.stringify(argsJson.proposal.snapshot.timeline),
   };
 
-  logger.info(`Proposal Snapshot: ${JSON.stringify(proposalSnapshot)}`);
   await ProposalSnapshot.create(proposalSnapshot).save();
-
+  logger.info('Created proposal snapshot linking proposals..')
 
   // TODO: checkAndUpdateLinkedProposals
   // 194 -> 94
@@ -130,10 +126,13 @@ export async function handleEditProposal(action: NearAction<FunctionCall>) {
 
   await createDump(action, argsJson, compositeId);
 
-  const proposal = getProposal(action.receipt.block_height, action.receipt.receiver_id, argsJson.id);
+  // TODO define return type of getProposal
+  const proposal = await getProposal(action.receipt.block_height, action.receipt.receiver_id, argsJson.id);
 
   const proposalGet = await Proposal.get(argsJson.id.toString())
 
+  // TODO try and see if any of these proposals give access to the LatestProposalSnapshot
+  // in order to create the new snapshot 
   logger.info(`Proposal from RPC: ${JSON.stringify(proposal)}`);
   logger.info(`ProposalGet with ID ${argsJson.id.toString()}: ${JSON.stringify(proposalGet)}`);
 
@@ -159,51 +158,11 @@ export async function handleEditProposal(action: NearAction<FunctionCall>) {
     supervisor: argsJson.body.supervisor || "", 
     timeline: JSON.stringify(argsJson.body.timeline), 
   }).save();
-}
 
-export async function handleActionFunctionCall(action: NearAction<FunctionCall>) {
-  // An Action can belong to either a transaction or a receipt
-  // To check which one, we can check if action.transaction is null
-  // If it is null, then it belongs to a receipt
-  if(!action.receipt){
-    return logger.info(`No receipt found for action ${action.id}`)
-  }
-
-  logger.info(
-    `Handling action at ${
-      action.transaction
-        ? action.transaction.block_height
-        : action.receipt.block_height
-    }`
-  );
-
-  logger.info(`Action: ${action.type}, Method: ${action.action.method_name}`);
-
-  const id = action.transaction
-    ? `${action.transaction.block_height}-${action.transaction.result.id}-${action.id}`
-    : `${action.receipt.block_height}-${action.receipt.id}-${action.id}`;
-  const sender = action.transaction
-    ? action.transaction.signer_id
-    : action.receipt.predecessor_id;
-  const receiver = action.transaction
-    ? action.transaction.receiver_id
-    : action.receipt.receiver_id;
-  let methodName = action.action.method_name;
-
-  logger.info(`FunctionCall: ${id}, Author: ${receiver}`);
-
-  await TestProposal.create({
-    id: id,
-    authorId: `${sender}`,
-    receiverId: `${receiver}`,
-    methodName: `${methodName}`,
-  }).save();
+  // TODO: checkAndUpdateLinkedProposals
 
 }
 
-// We have to generate the snapshot id ourselves if not provided by contract
-// but the contract will probably have its own mechanism for generating the snapshot id
-// that we don't know about -> find out
 
 // Limit to querying 100 snapshots per proposal
 // https://academy.subquery.network/indexer/build/graphql.html#standard-indexes
@@ -257,7 +216,7 @@ export async function handleEditProposalTimeline(action: NearAction<FunctionCall
   const argsJson: NewProposalTimelineArgs  = action.action.args.toJson();
 
   logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
-  
+
   const compositeId = `${action.receipt.receiver_id}_${argsJson.id.toString()}`;
   await createDump(action, argsJson, compositeId);
 

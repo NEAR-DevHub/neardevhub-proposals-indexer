@@ -53,7 +53,8 @@ const project: NearProject = {
       kind: NearDatasourceKind.Runtime,
       startBlock: 127273095, // maguila.near add_proposal 127684275
                              // gagdiez.near	edit_proposal	127721183
-                             // add_proposal -> edit_proposal 127273095
+                             // add_proposal -> edit_proposal 
+                             // 127273095 -> 127273392
       mapping: {
         file: "./dist/index.js",
         handlers: [

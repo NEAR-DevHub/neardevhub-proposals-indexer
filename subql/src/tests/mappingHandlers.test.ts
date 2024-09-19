@@ -1,10 +1,26 @@
 import { subqlTest } from "@subql/testing";
-import { NearActionEntity } from "../types";
+import { NearActionEntity, ProposalSnapshot, Proposal } from "../types";
+import { test, before, after, describe } from 'node:test';
+
+
+
+describe("handleEvent test", () => {
+  before(() => {
+    // Setup test data
+  });
+  test("test", async (t) => {
+    console.log("test");
+  });
+
+  after(() => {
+    // Cleanup test data
+  });
+});
+
 
 /**
  * Source: https://academy.subquery.network/indexer/build/testing.html#example-project
  */
-
 subqlTest(
   "handleEvent test", // test name
   1000003, // block height to process
