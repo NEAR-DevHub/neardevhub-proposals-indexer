@@ -18,6 +18,18 @@ type NearActionEntity @entity {
   amount: Int!
 }
 
+type Dump @entity {
+  id: ID!
+  receiptId: String!
+  methodName: String!
+  blockHeight: Int!
+  args: String!
+  author: String!
+  proposalId: Int!
+  instance: String!
+}
+
+
 type TestProposal @entity {
   id: ID!
   authorId: String!
@@ -30,6 +42,7 @@ type Proposal @entity {
   authorId: String!
   snapshots: [ProposalSnapshot!]! @derivedFrom(field: "proposal")
   linkedProposals: [LinkedProposal!]! @derivedFrom(field: "proposal")
+  instance: String!
 }
 
 type ProposalSnapshot @entity {
@@ -47,68 +60,55 @@ type ProposalSnapshot @entity {
   summary: String!
   description: String!
   linkedProposals: [LinkedProposal!]! @derivedFrom(field: "snapshot")
-  # TODO: commented out to test
-  # linkedRfp: Rfp @derivedFrom(field: "linkedProposals")
+  linkedRfp: Rfp
   requestedSponsorshipUsdAmount: String!
   requestedSponsorshipPaidInCurrency: String!
   requestedSponsor: String!
   receiverAccount: String!
-  supervisor: String!
+  supervisor: String # Optional
   timeline: String!
-  edits: Int!
 }
 
+# Bi directional relationship between Proposal and LinkedProposals
 type LinkedProposal @entity {
   id: ID!
   proposal: Proposal!
   snapshot: ProposalSnapshot!
 }
 
-type Dump @entity {
+type Rfp @entity {
   id: ID!
-  methodName: String
-  blockHeight: Int!
-  blockTimestamp: Int!
-  args: String
-  author: String
-  # TODO: commented out to test
-  # proposal: Proposal
-  proposal: String
+  authorId: String!
+  snapshots: [RfpSnapshot!]! @derivedFrom(field: "rfp")
+  instance: String!
 }
 
-# type Rfp @entity {
-#   id: ID!
-#   authorId: String!
-#   snapshots: [RfpSnapshot!]! @derivedFrom(field: "rfp")
-#   latestSnapshot: RfpSnapshot
-# }
+type RfpSnapshot @entity {
+  id: ID!
+  rfp: Rfp!
+  blockHeight: Int!
+  timestamp: Int!
+  editorId: String!
+  socialDbPostBlockHeight: Int!
+  labels: [String!]!
+  # linkedProposals: [Proposal!] @derivedFrom(field: "linkedRfp")
+  rfpVersion: String!
+  rfpBodyVersion: String!
+  name: String!
+  category: String!
+  summary: String!
+  description: String!
+  timeline: String!
+  submissionDeadline: Int
+}
 
-# type RfpSnapshot @entity {
-#   id: ID!
-#   rfp: Rfp!
-#   blockHeight: Int!
-#   timestamp: Int!
-#   editorId: String
-#   socialDbPostBlockHeight: Int
-#   labels: [String!]
-#   linkedProposals: [Proposal!] @derivedFrom(field: "linkedRfp")
-#   rfpVersion: String
-#   rfpBodyVersion: String
-#   name: String
-#   category: String
-#   summary: String
-#   description: String
-#   timeline: String
-#   submissionDeadline: Int
-#   edits: Int
-# }
-
-# type RfpDump @entity {
-#   id: ID!
-#   methodName: String
-#   blockHeight: Int!
-#   blockTimestamp: Int!
-#   args: String
-#   author: String
-#   rfp: Rfp
-# }
+type RfpDump @entity {
+  id: ID!
+  receiptId: String!
+  methodName: String
+  blockHeight: Int!
+  args: String
+  author: String
+  rfp: Rfp
+  instance: String!
+}
