@@ -50,70 +50,6 @@ interface FunctionCallExample {
   // deposit: BN;
 }
 
-export async function handleAddProposal(action: NearAction<FunctionCall>) {
-  logger.info(`Handling add proposal at ${action?.receipt?.block_height}`);
-
-  if(!action.receipt){
-    return logger.info(`No receipt found for action ${action.id}`)
-  }
-  let args = action.action.args;
-  let author = action.transaction
-  ? action.transaction.signer_id
-  : action.receipt.predecessor_id;
-  let blockHeight = action.receipt.block_height;
-  let methodName = action.action.method_name;
-  logger.info(`Indexing ${methodName} by ${author} at ${blockHeight}`);
-
-  const proposalIds = await getProposalIds(blockHeight, action.receipt.receiver_id);
-  const lastProposalId = proposalIds.slice(-1)[0];
-
-  logger.info(`Last 5 proposals: ${proposalIds.slice(-5).join(",")}`);
-  logger.info(`Last Proposal ID: ${lastProposalId}`);
-  logger.info(`Last Proposal ID TYPE: ${typeof lastProposalId}`);
-
-  logger.info(`Args: ${args}`);
-
-  const argsJson: AddProposalArgs = args.toJson();
-  
-  logger.info(`Args: ${JSON.stringify(argsJson)}`);
-
-  const authorId = argsJson.body.receiver_account;
-
-  // TODO: Create composite id for different instances
-  const proposalId = (Number(lastProposalId) + 1).toString();
-
-  logger.info(`proposalId: ${proposalId}`);
-
-  await Proposal.create({
-    id: proposalId,
-    authorId: authorId,
-    instance: action.receipt.receiver_id,
-  }).save();
-
-  await ProposalSnapshot.create({
-    id: proposalId,
-    proposalId: proposalId,
-    blockHeight: blockHeight,
-    // timestamp: blockTimestamp, // Not sure if we need this and not accessible from handler
-    editorId: authorId,
-    socialDbPostBlockHeight: 0, // TODO edit_proposal
-    labels: argsJson.labels,
-    proposalVersion: argsJson.body.proposal_body_version,
-    proposalBodyVersion: argsJson.body.proposal_body_version,
-    name: argsJson.body.name,
-    category: argsJson.body.category,
-    summary: argsJson.body.summary,
-    description: argsJson.body.description,
-    requestedSponsorshipUsdAmount: argsJson.body.requested_sponsorship_usd_amount,
-    requestedSponsorshipPaidInCurrency: argsJson.body.requested_sponsorship_paid_in_currency,
-    requestedSponsor: argsJson.body.requested_sponsor,
-    receiverAccount: argsJson.body.receiver_account,
-    supervisor: argsJson.body.supervisor,
-    timeline: JSON.stringify(argsJson.body.timeline),
-  }).save();
-}
-
-
 export async function handleSetBlockHeightCallback(action: NearAction<FunctionCall>) {
   logger.info(`Handling set block height callback at ${action?.receipt?.block_height}`);
 
@@ -131,21 +67,29 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
 
   logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
 
-  await createDump(action, argsJson);
+  const compositeId = `${action.receipt.receiver_id}_${argsJson.proposal.id.toString()}`;
+
+  await createDump(action, argsJson, compositeId);
 
   await Proposal.create({
-    id: argsJson.proposal.id.toString(),
+    id: compositeId,
     authorId: argsJson.proposal.author_id,
     instance: action.receipt.receiver_id,
   }).save();
 
-  await ProposalSnapshot.create({
+  let socialDbPostBlockHeight = argsJson.proposal.social_db_post_block_height;
+
+  logger.info(`Social DB Post Block Height: ${socialDbPostBlockHeight} and type ${typeof socialDbPostBlockHeight}`);
+
+  let supervisor = argsJson.proposal.snapshot.supervisor ?? "";
+
+  let proposalSnapshot = {
     // NOTE the first snapshot has the same id as the proposal
-    id: argsJson.proposal.id.toString(),
-    proposalId: argsJson.proposal.id.toString(),
-    blockHeight: action?.receipt?.block_height,
+    id: compositeId,
+    proposalId: compositeId,
+    blockHeight: action.receipt.block_height,
     editorId: argsJson.proposal.snapshot.editor_id,
-    socialDbPostBlockHeight: Number(argsJson.proposal.social_db_post_block_height),
+    socialDbPostBlockHeight: Number(socialDbPostBlockHeight),
     labels: argsJson.proposal.snapshot.labels,
     proposalVersion: argsJson.proposal.snapshot.proposal_body_version,
     proposalBodyVersion: argsJson.proposal.snapshot.proposal_body_version,
@@ -157,12 +101,16 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
     requestedSponsorshipPaidInCurrency: argsJson.proposal.snapshot.requested_sponsorship_paid_in_currency,
     requestedSponsor: argsJson.proposal.snapshot.requested_sponsor,
     receiverAccount: argsJson.proposal.snapshot.receiver_account,
-    supervisor: argsJson.proposal.snapshot.supervisor,
+    supervisor: supervisor,
     timeline: JSON.stringify(argsJson.proposal.snapshot.timeline),
-  }).save();
+  };
+
+  logger.info(`Proposal Snapshot: ${JSON.stringify(proposalSnapshot)}`);
+  await ProposalSnapshot.create(proposalSnapshot).save();
 
 
   // TODO: checkAndUpdateLinkedProposals
+  // 194 -> 94
 }
 
 
@@ -178,7 +126,9 @@ export async function handleEditProposal(action: NearAction<FunctionCall>) {
 
   logger.info(`Edit Proposal: ${JSON.stringify(argsJson)}`);
 
-  await createDump(action, argsJson);
+  const compositeId = `${action.receipt.receiver_id}_${argsJson.id.toString()}`;
+
+  await createDump(action, argsJson, compositeId);
 
   const proposal = getProposal(action.receipt.block_height, action.receipt.receiver_id, argsJson.id);
 
@@ -270,7 +220,9 @@ export async function handleEditProposalLinkedRFP(action: NearAction<FunctionCal
 
   logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
 
-  await createDump(action, argsJson);
+  const compositeId = `${action.receipt.receiver_id}_${argsJson.id.toString()}`;
+
+  await createDump(action, argsJson, compositeId);
 
   const proposalSnapshot = await ProposalSnapshot.get(argsJson.id.toString())
 
@@ -305,8 +257,9 @@ export async function handleEditProposalTimeline(action: NearAction<FunctionCall
   const argsJson: NewProposalTimelineArgs  = action.action.args.toJson();
 
   logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
-
-  await createDump(action, argsJson);
+  
+  const compositeId = `${action.receipt.receiver_id}_${argsJson.id.toString()}`;
+  await createDump(action, argsJson, compositeId);
 
   const proposalSnapshot = await ProposalSnapshot.get(argsJson.id.toString())
 
@@ -427,6 +380,6 @@ export async function handleCancelRFP(action: NearAction<FunctionCall>) {
   
   await handleRFPDump(action);
 
-  const argsJson:CancelRFPArgs = action.action.args.toJson();
+  const argsJson: CancelRFPArgs = action.action.args.toJson();
   
 }

@@ -25,7 +25,7 @@ type Dump @entity {
   blockHeight: Int!
   args: String!
   author: String!
-  proposalId: Int!
+  proposalId: String!
   instance: String!
 }
 

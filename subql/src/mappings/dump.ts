@@ -2,7 +2,7 @@ import { FunctionCall, NearAction } from "@subql/types-near";
 import { Dump, RfpDump } from "../types";
 import { NewProposalTimelineArgs } from "./argsTypes";
 
-export async function createDump(action: NearAction<FunctionCall>, argsJson: any) {
+export async function createDump(action: NearAction<FunctionCall>, argsJson: any, proposalId: string) {
   if(!action.receipt){
     return logger.info(`No receipt found when creating dump for ${action.id}`)
   }
@@ -13,7 +13,7 @@ export async function createDump(action: NearAction<FunctionCall>, argsJson: any
     blockHeight: action.receipt.block_height,
     args: JSON.stringify(argsJson),
     author: action.receipt.predecessor_id,
-    proposalId: +argsJson.id,
+    proposalId: proposalId,
     instance: action.receipt.receiver_id,
   }).save();
 }

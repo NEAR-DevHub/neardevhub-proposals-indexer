@@ -8,6 +8,8 @@
     "codegen": "subql codegen",
     "publish": "subql publish",
     "start:docker": "docker-compose pull && docker-compose up --remove-orphans",
+    "remove:docker": "docker rm subql-graphql-engine-1  subql-subquery-node-1  subql-postgres-1",
+    "remove:data": "rm -rf .data",
     "dev": "subql codegen && subql build && docker-compose pull && docker-compose up --remove-orphans",
     "prepack": "rm -rf dist && npm run build",
     "test": "jest",
