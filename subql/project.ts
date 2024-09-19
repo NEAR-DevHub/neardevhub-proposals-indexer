@@ -51,10 +51,13 @@ const project: NearProject = {
   dataSources: [
     {
       kind: NearDatasourceKind.Runtime,
-      startBlock: 127684275, // maguila.near add_proposal
+      startBlock: 127273095, // maguila.near add_proposal 127684275
+                             // gagdiez.near	edit_proposal	127721183
+                             // add_proposal -> edit_proposal 127273095
       mapping: {
         file: "./dist/index.js",
         handlers: [
+          // DEVHUB proposals
           {
             handler: "handleSetBlockHeightCallback",
             kind: NearHandlerKind.Action,
@@ -65,7 +68,7 @@ const project: NearProject = {
             },
           },
           {
-            handler: "handleActionFunctionCall",
+            handler: "handleEditProposal",
             kind: NearHandlerKind.Action,
             filter: {
               type: "FunctionCall",
@@ -74,7 +77,7 @@ const project: NearProject = {
             },
           },
           {
-            handler: "handleActionFunctionCall",
+            handler: "handleEditProposal",
             kind: NearHandlerKind.Action,
             filter: {
               type: "FunctionCall",
@@ -83,7 +86,7 @@ const project: NearProject = {
             },
           },
           {
-            handler: "handleActionFunctionCall",
+            handler: "handleEditProposalLinkedRFP",
             kind: NearHandlerKind.Action,
             filter: {
               type: "FunctionCall",
@@ -92,7 +95,7 @@ const project: NearProject = {
             },
           },
           {
-            handler: "handleActionFunctionCall",
+            handler: "handleEditProposalTimeline",
             kind: NearHandlerKind.Action,
             filter: {
               type: "FunctionCall",
@@ -101,7 +104,7 @@ const project: NearProject = {
             },
           },
           {
-            handler: "handleActionFunctionCall",
+            handler: "handleEditProposalTimeline",
             kind: NearHandlerKind.Action,
             filter: {
               type: "FunctionCall",
@@ -109,6 +112,153 @@ const project: NearProject = {
               receiver: "devhub.near"
             },
           },
+          // DEVHUB RFPs
+          {
+            handler: "handleSetRFPBlockHeightCallback",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "set_rfp_block_height_callback",
+              receiver: "devhub.near"
+            },
+          },
+          {
+            handler: "handleEditRFP",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "edit_rfp",
+              receiver: "devhub.near"
+            },
+          },
+          {
+            handler: "handleEditRFPTimeline",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "edit_rfp_timeline",
+              receiver: "devhub.near"
+            },
+          },
+          {
+            handler: "handleCancelRFP",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "cancel_rfp",
+              receiver: "devhub.near"
+            },
+          },
+          // EVENTS COMMITTEE 
+          {
+            handler: "handleSetBlockHeightCallback",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "set_block_height_callback",
+              receiver: "events-committee.near"
+            },
+          },
+          // {
+          //   handler: "handleEditProposal",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal",
+          //     receiver: "events-committee.near"
+          //   },
+          // },
+          // {
+          //   handler: "handleEditProposal",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal_internal",
+          //     receiver: "events-committee.near"
+          //   },
+          // },
+          // {
+          //   handler: "handleEditProposalLinkedRFP",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal_linked_rfp",
+          //     receiver: "events-committee.near"
+          //   },
+          // },
+          // {
+          //   handler: "handleEditProposalTimeline",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal_timeline",
+          //     receiver: "events-committee.near"
+          //   },
+          // },
+          // {
+          //   handler: "handleEditProposalTimeline",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal_versioned_timeline",
+          //     receiver: "events-committee.near"
+          //   },
+          // },
+          // INFRASTRUCTURE
+          {
+            handler: "handleSetBlockHeightCallback",
+            kind: NearHandlerKind.Action,
+            filter: {
+              type: "FunctionCall",
+              methodName: "set_block_height_callback",
+              receiver: "infrastructure-committee.near"
+            },
+          },
+          // {
+          //   handler: "handleEditProposal",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal",
+          //     receiver: "infrastructure-committee.near"
+          //   },
+          // },
+          // {
+          //   handler: "handleEditProposal",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal_internal",
+          //     receiver: "infrastructure-committee.near"
+          //   },
+          // },
+          // {
+          //   handler: "handleEditProposalLinkedRFP",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal_linked_rfp",
+          //     receiver: "infrastructure-committee.near"
+          //   },
+          // },
+          // {
+          //   handler: "handleEditProposalTimeline",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal_timeline",
+          //     receiver: "infrastructure-committee.near"
+          //   },
+          // },
+          // {
+          //   handler: "handleEditProposalTimeline",
+          //   kind: NearHandlerKind.Action,
+          //   filter: {
+          //     type: "FunctionCall",
+          //     methodName: "edit_proposal_versioned_timeline",
+          //     receiver: "infrastructure-committee.near"
+          //   },
+          // },
         ],
       },
     },

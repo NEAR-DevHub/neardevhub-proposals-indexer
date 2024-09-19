@@ -23,7 +23,7 @@ network:
     - 81003306
 dataSources:
   - kind: near/Runtime
-    startBlock: 127684275
+    startBlock: 127273095
     mapping:
       file: ./dist/index.js
       handlers:
@@ -33,33 +33,69 @@ dataSources:
             type: FunctionCall
             methodName: set_block_height_callback
             receiver: devhub.near
-        - handler: handleActionFunctionCall
+        - handler: handleEditProposal
           kind: near/ActionHandler
           filter:
             type: FunctionCall
             methodName: edit_proposal
             receiver: devhub.near
-        - handler: handleActionFunctionCall
+        - handler: handleEditProposal
           kind: near/ActionHandler
           filter:
             type: FunctionCall
             methodName: edit_proposal_internal
             receiver: devhub.near
-        - handler: handleActionFunctionCall
+        - handler: handleEditProposalLinkedRFP
           kind: near/ActionHandler
           filter:
             type: FunctionCall
             methodName: edit_proposal_linked_rfp
             receiver: devhub.near
-        - handler: handleActionFunctionCall
+        - handler: handleEditProposalTimeline
           kind: near/ActionHandler
           filter:
             type: FunctionCall
             methodName: edit_proposal_timeline
             receiver: devhub.near
-        - handler: handleActionFunctionCall
+        - handler: handleEditProposalTimeline
           kind: near/ActionHandler
           filter:
             type: FunctionCall
             methodName: edit_proposal_versioned_timeline
             receiver: devhub.near
+        - handler: handleSetRFPBlockHeightCallback
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: set_rfp_block_height_callback
+            receiver: devhub.near
+        - handler: handleEditRFP
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: edit_rfp
+            receiver: devhub.near
+        - handler: handleEditRFPTimeline
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: edit_rfp_timeline
+            receiver: devhub.near
+        - handler: handleCancelRFP
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: cancel_rfp
+            receiver: devhub.near
+        - handler: handleSetBlockHeightCallback
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: set_block_height_callback
+            receiver: events-committee.near
+        - handler: handleSetBlockHeightCallback
+          kind: near/ActionHandler
+          filter:
+            type: FunctionCall
+            methodName: set_block_height_callback
+            receiver: infrastructure-committee.near
