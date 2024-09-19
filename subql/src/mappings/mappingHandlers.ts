@@ -1,4 +1,4 @@
-import { NearActionEntity, Proposal, ProposalSnapshot, TestProposal } from "../types";
+import { NearActionEntity, Proposal, ProposalSnapshot, TestProposal, Dump, RfpDump, Rfp, RfpSnapshot } from "../types";
 import {
   NearTransaction,
   NearAction,
@@ -6,8 +6,11 @@ import {
   FunctionCall,
   NearBlock
 } from "@subql/types-near";
-
-
+import { INSTANCES } from "./instances";
+import { AddProposalArgs, CancelRFPArgs, EditProposalArgs, EditProposalLinkedRFPArgs, EditRFPArgs, EditRFPTimelineArgs, NewProposal, NewProposalTimelineArgs, SetRFPBlockHeightCallbackArgs } from "./argsTypes";
+import { decodeRPCResponse, toBase64 } from "./utils";
+import { createDump, handleRFPDump } from "./dump";
+import { getProposal, getProposalIds } from "./rpcCalls";
 
 interface NearActionExample<FunctionCallExample> {
   id: number;
@@ -47,25 +50,6 @@ interface FunctionCallExample {
   // deposit: BN;
 }
 
-
-interface AddProposalArgs {
-  labels: any[];
-  body: {
-    proposal_body_version: string;
-    name: string;
-    description: string;
-    category: string;
-    summary: string;
-    linked_proposals: any[];
-    requested_sponsorship_usd_amount: string;
-    requested_sponsorship_paid_in_currency: string;
-    receiver_account: string;
-    supervisor: string;
-    requested_sponsor: string;
-    timeline: { status: string };
-  }
-  accepted_terms_and_conditions_version: number;
-}
 export async function handleAddProposal(action: NearAction<FunctionCall>) {
   logger.info(`Handling add proposal at ${action?.receipt?.block_height}`);
 
@@ -80,23 +64,10 @@ export async function handleAddProposal(action: NearAction<FunctionCall>) {
   let methodName = action.action.method_name;
   logger.info(`Indexing ${methodName} by ${author} at ${blockHeight}`);
 
-  const response: { result: number[]; logs: any[]; block_height: number; block_hash: string; }  = await api.sendJsonRpc("query",{
-      "request_type": "call_function",
-      "block_id": blockHeight,
-      "account_id": "devhub.near",
-      "method_name": "get_all_proposal_ids",
-      "args_base64": "e30="
-    }
-  );
-
-  logger.info(`Response: ${JSON.stringify(response)}`);
-
-  const proposalIds = JSON.parse(response.result.map((x: number) => String.fromCharCode(x)).join(""));
-
+  const proposalIds = await getProposalIds(blockHeight, action.receipt.receiver_id);
   const lastProposalId = proposalIds.slice(-1)[0];
 
   logger.info(`Last 5 proposals: ${proposalIds.slice(-5).join(",")}`);
-
   logger.info(`Last Proposal ID: ${lastProposalId}`);
   logger.info(`Last Proposal ID TYPE: ${typeof lastProposalId}`);
 
@@ -108,19 +79,19 @@ export async function handleAddProposal(action: NearAction<FunctionCall>) {
 
   const authorId = argsJson.body.receiver_account;
 
+  // TODO: Create composite id for different instances
   const proposalId = (Number(lastProposalId) + 1).toString();
-  logger.info(`proposalId: ${proposalId}`);
 
+  logger.info(`proposalId: ${proposalId}`);
 
   await Proposal.create({
     id: proposalId,
     authorId: authorId,
-    // snapshots: [proposalSnapshot],
-    // latestSnapshot: proposalSnapshot,
+    instance: action.receipt.receiver_id,
   }).save();
 
   await ProposalSnapshot.create({
-    id: proposalId, // TODO snapshot id?
+    id: proposalId,
     proposalId: proposalId,
     blockHeight: blockHeight,
     // timestamp: blockTimestamp, // Not sure if we need this and not accessible from handler
@@ -139,53 +110,10 @@ export async function handleAddProposal(action: NearAction<FunctionCall>) {
     receiverAccount: argsJson.body.receiver_account,
     supervisor: argsJson.body.supervisor,
     timeline: JSON.stringify(argsJson.body.timeline),
-    edits: 1,
   }).save();
-
-  /**
-   * These are the in the feed
-   * author_id
-      block_height
-      name
-      category
-      summary
-      editor_id
-      proposal_id
-      ts
-      timeline
-      views
-      labels
-      linked_rfp
-   */
 }
 
-interface NewProposal {
-  proposal: {
-    id: number;
-    author_id: string;
-    social_db_post_block_height: string;
-    snapshot: {
-      editor_id: string;
-      timestamp: string;
-      labels: any[];
-      proposal_body_version: string;
-      name: string;
-      category: string;
-      summary: string;
-      description: string;
-      linked_proposals: any[];
-      requested_sponsorship_usd_amount: string;
-      requested_sponsorship_paid_in_currency: string;
-      receiver_account: string;
-      requested_sponsor: string;
-      supervisor: string;
-      timeline: { status: string };
-    };
-    snapshot_history: any[];
-  };
-}
 
-// TODO: use this function instead of handleAddProposal
 export async function handleSetBlockHeightCallback(action: NearAction<FunctionCall>) {
   logger.info(`Handling set block height callback at ${action?.receipt?.block_height}`);
 
@@ -193,18 +121,26 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
     return logger.info(`No receipt found for set block height callback  ${action.id}`)
   }
 
+  // NOTE: skipping indexing of events-committee.near before block 118620288 because we tested on mainnet and wiped contract data after that.
+  if (action.receipt.receiver_id === INSTANCES.eventsCommittee.account && action.receipt.block_height < INSTANCES.eventsCommittee.startBlockHeight){
+    return logger.info(`Skipping indexing of set block height callback at ${action.receipt.block_height} for events-committee.near`)
+  }
+
   let args = action.action.args;
- 
   const argsJson: NewProposal = args.toJson();
 
   logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
 
+  await createDump(action, argsJson);
+
   await Proposal.create({
     id: argsJson.proposal.id.toString(),
     authorId: argsJson.proposal.author_id,
+    instance: action.receipt.receiver_id,
   }).save();
 
   await ProposalSnapshot.create({
+    // NOTE the first snapshot has the same id as the proposal
     id: argsJson.proposal.id.toString(),
     proposalId: argsJson.proposal.id.toString(),
     blockHeight: action?.receipt?.block_height,
@@ -223,10 +159,13 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
     receiverAccount: argsJson.proposal.snapshot.receiver_account,
     supervisor: argsJson.proposal.snapshot.supervisor,
     timeline: JSON.stringify(argsJson.proposal.snapshot.timeline),
-    edits: 1,
   }).save();
 
+
+  // TODO: checkAndUpdateLinkedProposals
 }
+
+
 
 export async function handleEditProposal(action: NearAction<FunctionCall>) {
   logger.info(`Handling edit proposal at ${action?.receipt?.block_height}`);
@@ -234,6 +173,42 @@ export async function handleEditProposal(action: NearAction<FunctionCall>) {
   if(!action.receipt){
     return logger.info(`No receipt found for edit proposal  ${action.id}`)
   }
+
+  const argsJson: EditProposalArgs = action.action.args.toJson();
+
+  logger.info(`Edit Proposal: ${JSON.stringify(argsJson)}`);
+
+  await createDump(action, argsJson);
+
+  const proposal = getProposal(action.receipt.block_height, action.receipt.receiver_id, argsJson.id);
+
+  const proposalGet = await Proposal.get(argsJson.id.toString())
+
+  logger.info(`Proposal from RPC: ${JSON.stringify(proposal)}`);
+  logger.info(`ProposalGet with ID ${argsJson.id.toString()}: ${JSON.stringify(proposalGet)}`);
+
+  // NOTE the first snapshot of any proposal has the same id as the proposal
+  const firstSnapshot = await ProposalSnapshot.get(argsJson.id.toString())
+
+  await ProposalSnapshot.create({
+    id: argsJson.id.toString(),
+    proposalId: argsJson.id.toString(),
+    blockHeight: action?.receipt?.block_height,
+    editorId: action.receipt.predecessor_id,
+    socialDbPostBlockHeight: firstSnapshot?.socialDbPostBlockHeight || 0,
+    name: argsJson.body.name,
+    category: argsJson.body.category,
+    summary: argsJson.body.summary,
+    description: argsJson.body.description,
+    requestedSponsorshipUsdAmount: argsJson.body.requested_sponsorship_usd_amount,
+    requestedSponsorshipPaidInCurrency: argsJson.body.requested_sponsorship_paid_in_currency,
+    receiverAccount: argsJson.body.receiver_account,
+    requestedSponsor: argsJson.body.requested_sponsor,
+    proposalVersion: firstSnapshot?.proposalVersion || "V0", 
+    proposalBodyVersion: firstSnapshot?.proposalBodyVersion || "V0", 
+    supervisor: argsJson.body.supervisor || "", 
+    timeline: JSON.stringify(argsJson.body.timeline), 
+  }).save();
 }
 
 export async function handleActionFunctionCall(action: NearAction<FunctionCall>) {
@@ -274,4 +249,184 @@ export async function handleActionFunctionCall(action: NearAction<FunctionCall>)
     methodName: `${methodName}`,
   }).save();
 
+}
+
+// We have to generate the snapshot id ourselves if not provided by contract
+// but the contract will probably have its own mechanism for generating the snapshot id
+// that we don't know about -> find out
+
+// Limit to querying 100 snapshots per proposal
+// https://academy.subquery.network/indexer/build/graphql.html#standard-indexes
+// This means we can't just query all snapshots when a proposal is edited often
+
+export async function handleEditProposalLinkedRFP(action: NearAction<FunctionCall>) {
+  logger.info(`Handling edit proposal linked rfp at ${action?.receipt?.block_height}`);
+
+  if(!action.receipt){
+    return logger.info(`No receipt found for set block height callback  ${action.id}`)
+  }
+
+  const argsJson: EditProposalLinkedRFPArgs = action.action.args.toJson();
+
+  logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
+
+  await createDump(action, argsJson);
+
+  const proposalSnapshot = await ProposalSnapshot.get(argsJson.id.toString())
+
+  await ProposalSnapshot.create({
+    id: argsJson.id.toString(), // TODO random
+    proposalId: argsJson.id.toString(),
+    blockHeight: action.receipt.block_height,
+    editorId: action.receipt.predecessor_id,
+    socialDbPostBlockHeight: proposalSnapshot?.socialDbPostBlockHeight || 0,
+    name: proposalSnapshot?.name || '',
+    category: proposalSnapshot?.category || '',
+    summary: proposalSnapshot?.summary || '',
+    description: proposalSnapshot?.description || '',
+    requestedSponsorshipUsdAmount: proposalSnapshot?.requestedSponsorshipUsdAmount || '',
+    requestedSponsorshipPaidInCurrency: proposalSnapshot?.requestedSponsorshipPaidInCurrency || '',
+    requestedSponsor: proposalSnapshot?.requestedSponsor || '',
+    receiverAccount: proposalSnapshot?.receiverAccount || '',
+    supervisor: proposalSnapshot?.supervisor || '',
+    proposalVersion: proposalSnapshot?.proposalVersion || 'V0',
+    proposalBodyVersion: proposalSnapshot?.proposalBodyVersion || 'V0',
+    timeline: proposalSnapshot?.timeline || '',
+  }).save();
+}
+
+export async function handleEditProposalTimeline(action: NearAction<FunctionCall>) {
+  logger.info(`Handling edit timeline at ${action?.receipt?.block_height}`);
+
+  if(!action.receipt){
+    return logger.info(`No receipt found for set block height callback  ${action.id}`)
+  }
+ 
+  const argsJson: NewProposalTimelineArgs  = action.action.args.toJson();
+
+  logger.info(`Proposal: ${JSON.stringify(argsJson)}`);
+
+  await createDump(action, argsJson);
+
+  const proposalSnapshot = await ProposalSnapshot.get(argsJson.id.toString())
+
+  await ProposalSnapshot.create({
+    id: argsJson.id.toString(),
+    proposalId: argsJson.id.toString(),
+    blockHeight: action.receipt.block_height,
+    editorId: action.receipt.predecessor_id,
+    socialDbPostBlockHeight: proposalSnapshot?.socialDbPostBlockHeight || 0,
+    name: proposalSnapshot?.name || '',
+    category: proposalSnapshot?.category || '',
+    summary: proposalSnapshot?.summary || '',
+    description: proposalSnapshot?.description || '',
+    requestedSponsorshipUsdAmount: proposalSnapshot?.requestedSponsorshipUsdAmount || '',
+    requestedSponsorshipPaidInCurrency: proposalSnapshot?.requestedSponsorshipPaidInCurrency || '',
+    requestedSponsor: proposalSnapshot?.requestedSponsor || '',
+    receiverAccount: proposalSnapshot?.receiverAccount || '',
+    supervisor: proposalSnapshot?.supervisor || '',
+    proposalVersion: proposalSnapshot?.proposalVersion || 'V0',
+    proposalBodyVersion: proposalSnapshot?.proposalBodyVersion || 'V0',
+    timeline: JSON.stringify(argsJson.timeline), 
+  }).save();
+
+  const firstSnapshot = await ProposalSnapshot.get(argsJson.id.toString())
+
+}
+
+export async function handleSetRFPBlockHeightCallback(action: NearAction<FunctionCall>) {
+  logger.info(`Handling set rfp block height callback at ${action?.receipt?.block_height}`);
+
+  if(!action.receipt){
+    return logger.info(`No receipt found for set rfp block height callback  ${action.id}`)
+  }
+
+  await handleRFPDump(action);
+
+  const argsJson:SetRFPBlockHeightCallbackArgs  = action.action.args.toJson();
+  const receiver = action.receipt.receiver_id;
+  const compositeId = `${receiver}_${argsJson.rfp.id.toString()}`;
+
+  // Create the RFP
+  await Rfp.create({
+    id: `${receiver}_${argsJson.rfp.id.toString()}`,
+    authorId: argsJson.rfp.author_id.toString(),
+    instance: action.receipt.receiver_id,
+  }).save();
+
+  // Create the RFP Snapshot
+  await RfpSnapshot.create({
+    id: argsJson.rfp.id.toString(),
+    rfpId: argsJson.rfp.id.toString(),
+    blockHeight: action.receipt.block_height,
+    editorId: action.receipt.predecessor_id,
+    socialDbPostBlockHeight: 0,
+    name: argsJson.rfp.snapshot.body.name,
+    description: argsJson.rfp.snapshot.body.description,
+    category: argsJson.rfp.snapshot.body.category,
+    timestamp: argsJson.rfp.snapshot.body.timestamp,
+    labels: argsJson.rfp.snapshot.body.labels,
+    summary: argsJson.rfp.snapshot.body.summary,
+    timeline: argsJson.rfp.snapshot.body.timeline,
+    rfpVersion: argsJson.rfp.snapshot.body.rfp_version,
+    rfpBodyVersion: argsJson.rfp.snapshot.body.rfp_body_version,
+  }).save();
+}
+
+
+export async function handleEditRFP(action: NearAction<FunctionCall>) {
+  logger.info(`Handling edit rfp at ${action?.receipt?.block_height}`);
+
+  if(!action.receipt){
+    return logger.info(`No receipt found for edit rfp  ${action.id}`)
+  }
+
+  await handleRFPDump(action);
+  
+  const argsJson:EditRFPArgs = action.action.args.toJson();
+
+  logger.info(`Edit RFP: ${JSON.stringify(argsJson)}`);
+
+  const rfpSnapshot = await RfpSnapshot.get(argsJson.id.toString())
+
+  // await RfpSnapshot.create({
+    
+  // })
+}
+
+export async function handleEditRFPTimeline(action: NearAction<FunctionCall>) {
+  logger.info(`Handling edit rfp timeline at ${action?.receipt?.block_height}`);
+
+  if(!action.receipt){
+    return logger.info(`No receipt found for edit rfp timeline  ${action.id}`)
+  }
+
+  await handleRFPDump(action);
+  const argsJson: EditRFPTimelineArgs = action.action.args.toJson();
+  
+  logger.info(`Edit RFP Timeline: ${JSON.stringify(argsJson)}`);
+
+  const rfpSnapshot = await RfpSnapshot.get(argsJson.id.toString())
+
+  // await RfpSnapshot.create({
+  //   id: argsJson.id.toString(),
+  //   rfpId: argsJson.id.toString(),
+  //   blockHeight: action.receipt.block_height,
+  //   editorId: action.receipt.predecessor_id,
+  // })
+}
+
+
+
+export async function handleCancelRFP(action: NearAction<FunctionCall>) {
+  logger.info(`Handling cancel rfp at ${action?.receipt?.block_height}`);
+
+  if(!action.receipt){
+    return logger.info(`No receipt found for cancel rfp  ${action.id}`)
+  }
+  
+  await handleRFPDump(action);
+
+  const argsJson:CancelRFPArgs = action.action.args.toJson();
+  
 }
