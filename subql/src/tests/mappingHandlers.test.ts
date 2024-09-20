@@ -9,7 +9,7 @@ import {  ProposalSnapshot, Proposal, LinkedProposal } from "../types";
 // add_proposal -> edit_proposal 
 // 127273095 -> 127273392
 subqlTest(
-  "should add proposal without a problem",
+  "should add proposal proposalSnapshot and link to older proposal without a problem",
   127273095, // block height to process Here it should at the proposal from 127273095
   [
     Proposal.create({
