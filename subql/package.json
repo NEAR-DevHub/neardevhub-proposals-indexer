@@ -12,8 +12,8 @@
     "remove:data": "rm -rf .data",
     "dev": "subql codegen && subql build && docker-compose pull && docker-compose up --remove-orphans",
     "prepack": "rm -rf dist && npm run build",
-    "test": "jest",
-    "test:debug": "subql test",
+    "test": "yarn build && subql-node-near test",
+    "test:debug": "yarn build && subql-node-near test --debug",
     "build:develop": "NODE_ENV=develop subql codegen && NODE_ENV=develop subql build"
   },
   "homepage": "https://github.com/subquery/near-subql-starter",
@@ -28,6 +28,7 @@
   "dependencies": {
     "@subql/common": "latest",
     "@subql/common-near": "^4.1.0",
+    "@subql/node": "^5.2.5",
     "@subql/testing": "^2.2.1",
     "@subql/types-near": "latest",
     "assert": "^2.0.0"

@@ -1,4 +1,4 @@
-import { NearActionEntity, Proposal, ProposalSnapshot, TestProposal, Dump, RfpDump, Rfp, RfpSnapshot } from "../types";
+import { NearActionEntity, Proposal, ProposalSnapshot, TestProposal, Dump, RfpDump, Rfp, RfpSnapshot, LinkedProposal } from "../types";
 import {
   NearTransaction,
   NearAction,
@@ -88,7 +88,6 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
     editorId: argsJson.proposal.snapshot.editor_id,
     socialDbPostBlockHeight: Number(socialDbPostBlockHeight),
     labels: argsJson.proposal.snapshot.labels,
-    proposalVersion: argsJson.proposal.snapshot.proposal_body_version,
     proposalBodyVersion: argsJson.proposal.snapshot.proposal_body_version,
     name: argsJson.proposal.snapshot.name,
     category: argsJson.proposal.snapshot.category,
@@ -105,11 +104,20 @@ export async function handleSetBlockHeightCallback(action: NearAction<FunctionCa
   await ProposalSnapshot.create(proposalSnapshot).save();
   logger.info('Created proposal snapshot linking proposals..')
 
-  // TODO: checkAndUpdateLinkedProposals
-  // 194 -> 94
+  const linkedProposals = argsJson.proposal.snapshot.linked_proposals;
+  let linkedProposalPromises = [];
+  for (const linkedProposal of linkedProposals) {
+    logger.info(`compositeId: ${compositeId}`)
+    logger.info(`action.receipt.receiver_id: ${action.receipt.receiver_id}`)
+    logger.info(`linkedProposal: ${linkedProposal}`)
+    linkedProposalPromises.push(LinkedProposal.create({
+      id: `${action.receipt.receiver_id}_${argsJson.proposal.id}_${linkedProposal}`,
+      proposalId: `${action.receipt.receiver_id}_${linkedProposal}`,
+      snapshotId: compositeId,
+    }))
+  }
+  await Promise.all(linkedProposalPromises);
 }
-
-
 
 export async function handleEditProposal(action: NearAction<FunctionCall>) {
   logger.info(`Handling edit proposal at ${action?.receipt?.block_height}`);
@@ -153,14 +161,12 @@ export async function handleEditProposal(action: NearAction<FunctionCall>) {
     requestedSponsorshipPaidInCurrency: argsJson.body.requested_sponsorship_paid_in_currency,
     receiverAccount: argsJson.body.receiver_account,
     requestedSponsor: argsJson.body.requested_sponsor,
-    proposalVersion: firstSnapshot?.proposalVersion || "V0", 
     proposalBodyVersion: firstSnapshot?.proposalBodyVersion || "V0", 
     supervisor: argsJson.body.supervisor || "", 
     timeline: JSON.stringify(argsJson.body.timeline), 
   }).save();
 
   // TODO: checkAndUpdateLinkedProposals
-
 }
 
 
@@ -200,7 +206,6 @@ export async function handleEditProposalLinkedRFP(action: NearAction<FunctionCal
     requestedSponsor: proposalSnapshot?.requestedSponsor || '',
     receiverAccount: proposalSnapshot?.receiverAccount || '',
     supervisor: proposalSnapshot?.supervisor || '',
-    proposalVersion: proposalSnapshot?.proposalVersion || 'V0',
     proposalBodyVersion: proposalSnapshot?.proposalBodyVersion || 'V0',
     timeline: proposalSnapshot?.timeline || '',
   }).save();
@@ -237,7 +242,6 @@ export async function handleEditProposalTimeline(action: NearAction<FunctionCall
     requestedSponsor: proposalSnapshot?.requestedSponsor || '',
     receiverAccount: proposalSnapshot?.receiverAccount || '',
     supervisor: proposalSnapshot?.supervisor || '',
-    proposalVersion: proposalSnapshot?.proposalVersion || 'V0',
     proposalBodyVersion: proposalSnapshot?.proposalBodyVersion || 'V0',
     timeline: JSON.stringify(argsJson.timeline), 
   }).save();

@@ -12,13 +12,13 @@ runner:
 description: >-
   This is an example project that indexes price oracle feeds from the NEAR
   blockchain using SubQuery
-repository: 'https://github.com/subquery/near-subql-starter'
+repository: https://github.com/subquery/near-subql-starter
 schema:
   file: ./schema.graphql
 network:
   chainId: mainnet
   endpoint:
-    - 'https://archival-rpc.mainnet.near.org'
+    - https://archival-rpc.mainnet.near.org
   bypassBlocks:
     - 81003306
 dataSources:
